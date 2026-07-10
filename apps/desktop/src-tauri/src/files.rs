@@ -106,9 +106,11 @@ mod tests {
     use std::io::Write;
 
     fn temp_file(name: &str, contents: &[u8]) -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join("mergescope-tests");
+        let dir = std::env::temp_dir()
+            .join("mergescope-tests")
+            .join(format!("{}-{}", std::process::id(), name));
         std::fs::create_dir_all(&dir).unwrap();
-        let path = dir.join(format!("{}-{}", std::process::id(), name));
+        let path = dir.join(name);
         let mut f = std::fs::File::create(&path).unwrap();
         f.write_all(contents).unwrap();
         path

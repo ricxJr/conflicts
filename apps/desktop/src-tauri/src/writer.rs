@@ -56,10 +56,14 @@ pub fn atomic_write(target: &Path, bytes: &[u8], create_backup: bool) -> Result<
 mod tests {
     use super::*;
 
+    /// Each test gets its own directory: the leftover assertions must never
+    /// observe transient temp files created by tests running in parallel.
     fn temp_target(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join("mergescope-tests");
+        let dir = std::env::temp_dir()
+            .join("mergescope-tests")
+            .join(format!("{}-{}", std::process::id(), name));
         std::fs::create_dir_all(&dir).unwrap();
-        dir.join(format!("{}-{}", std::process::id(), name))
+        dir.join(name)
     }
 
     #[test]
