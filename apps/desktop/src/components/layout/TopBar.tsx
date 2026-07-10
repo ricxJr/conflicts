@@ -72,7 +72,7 @@ export function TopBar() {
             onChange={(e) => setPrefs({ showConflictList: e.target.checked })}
           />
           {t("topbar.list")}
-        </label>
+        </label>{" "}
         <select
           className="theme-select"
           value={prefs.theme}

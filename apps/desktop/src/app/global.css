@@ -321,8 +321,8 @@ select:focus-visible {
 
 /* Conflict list */
 .conflict-list {
-  width: 230px;
-  flex: 0 0 230px;
+  position: relative;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border);
@@ -330,6 +330,64 @@ select:focus-visible {
   overflow: hidden;
 }
 
+.conflict-list.resizing,
+.conflict-list.resizing * {
+  cursor: col-resize !important;
+  user-select: none;
+}
+
+.conflict-list .panel-header {
+  gap: 6px;
+}
+
+.conflict-list-toggle {
+  flex: 0 0 auto;
+  margin-left: auto;
+  min-width: 24px;
+  padding: 1px 6px;
+}
+
+.conflict-list-resizer {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+}
+
+.conflict-list-resizer:hover,
+.conflict-list-resizer:focus-visible,
+.conflict-list.resizing .conflict-list-resizer {
+  background: var(--accent);
+  outline: none;
+}
+
+.conflict-list.collapsed .panel-header {
+  justify-content: center;
+  padding-inline: 4px;
+}
+
+.conflict-list.collapsed .conflict-list-toggle {
+  margin-left: 0;
+}
+
+.conflict-list.collapsed ul {
+  padding-inline: 3px;
+}
+
+.conflict-list.collapsed .conflict-item {
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 2px;
+  text-align: center;
+}
+
+.conflict-list.collapsed .conflict-lines {
+  min-width: 0;
+  font-size: 11px;
+}
 .conflict-list ul {
   list-style: none;
   margin: 0;

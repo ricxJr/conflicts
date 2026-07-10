@@ -118,6 +118,8 @@ export interface Preferences {
   keybindings: Record<string, string>;
   showBasePanel: boolean;
   showConflictList: boolean;
+  conflictListWidth: number;
+  conflictListCollapsed: boolean;
   hideUnchangedRegions: boolean;
   ignoreWhitespace: boolean;
   createBackup: boolean;
@@ -136,6 +138,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   keybindings: {},
   showBasePanel: false,
   showConflictList: true,
+  conflictListWidth: 230,
+  conflictListCollapsed: false,
   hideUnchangedRegions: false,
   ignoreWhitespace: false,
   createBackup: false,

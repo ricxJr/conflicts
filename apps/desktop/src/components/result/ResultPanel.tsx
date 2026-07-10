@@ -151,26 +151,31 @@ export function ResultPanel() {
     const editor = editorRef.current;
     const model = editor?.getModel();
     if (!editor || !model) return;
-    for (const group of groups) {
-      const info = regionsRef.current.get(group.id);
-      if (!info || info.collapsedAtLine !== null) continue;
-      const range = model.getDecorationRange(info.decorationId);
-      if (!range) continue;
-      const [newId] = model.deltaDecorations(
-        [info.decorationId],
-        [
-          {
-            range,
-            options: {
-              className: regionClass(group.status, group.classification),
-              isWholeLine: true,
-              linesDecorationsClassName: "msr-stripe",
-              stickiness: monaco.editor.TrackedRangeStickiness.AlwaysGrowsWhenTypingAtEdges,
+    suppressRef.current++;
+    try {
+      for (const group of groups) {
+        const info = regionsRef.current.get(group.id);
+        if (!info || info.collapsedAtLine !== null) continue;
+        const range = model.getDecorationRange(info.decorationId);
+        if (!range) continue;
+        const [newId] = model.deltaDecorations(
+          [info.decorationId],
+          [
+            {
+              range,
+              options: {
+                className: regionClass(group.status, group.classification),
+                isWholeLine: true,
+                linesDecorationsClassName: "msr-stripe",
+                stickiness: monaco.editor.TrackedRangeStickiness.AlwaysGrowsWhenTypingAtEdges,
+              },
             },
-          },
-        ],
-      );
-      info.decorationId = newId;
+          ],
+        );
+        info.decorationId = newId;
+      }
+    } finally {
+      suppressRef.current--;
     }
   }, [groups]);
 

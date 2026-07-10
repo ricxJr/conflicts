@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSession } from "../../stores/session";
 import { isConflicting } from "@mergescope/merge-engine";
@@ -14,7 +14,8 @@ export function ResolutionToolbar() {
   const next = useSession((s) => s.nextConflict);
   const prev = useSession((s) => s.prevConflict);
   const readonly = useSession((s) => s.session?.cli.readonly ?? false);
-  const kb = useSession((s) => effectiveKeybindings(s.prefs.keybindings));
+  const keybindingOverrides = useSession((s) => s.prefs.keybindings);
+  const kb = useMemo(() => effectiveKeybindings(keybindingOverrides), [keybindingOverrides]);
   const [bothOpen, setBothOpen] = useState(false);
 
   const group = groups[activeIndex];

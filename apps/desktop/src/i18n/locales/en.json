@@ -98,7 +98,10 @@
   "conflictList": {
     "aria": "Conflicts",
     "title": "Conflicts",
-    "empty": "No differences"
+    "empty": "No differences",
+    "collapse": "Collapse conflict list",
+    "expand": "Expand conflict list",
+    "resize": "Resize conflict list"
   },
   "palette": {
     "aria": "Command palette",
