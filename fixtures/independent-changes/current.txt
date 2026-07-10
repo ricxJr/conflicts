@@ -1,0 +1,4 @@
+validateOrder(order);
+applyDiscount(order);
+calculateTotal(order);
+saveOrder(order);

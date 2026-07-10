@@ -1,0 +1,5 @@
+validateOrder(order);
+applyDiscount(order);
+calculateTotal(order);
+validateCreditLimit(order);
+saveOrder(order);

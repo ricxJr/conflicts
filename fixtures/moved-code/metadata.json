@@ -1,0 +1,9 @@
+{
+  "name": "moved-code",
+  "classification": "overlapping",
+  "expectedStrategies": ["manual"],
+  "autoResolvable": false,
+  "note": "Move detection is heuristic/optional in the MVP (RF-014); the engine must degrade to a reviewable conflict.",
+  "eol": "LF",
+  "encoding": "UTF-8"
+}

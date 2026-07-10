@@ -1,0 +1,9 @@
+node_modules/
+dist/
+target/
+fixtures/
+package-lock.json
+apps/desktop/src-tauri/gen/
+apps/desktop/src-tauri/icons/
+apps/desktop/src-tauri/Cargo.lock
+MergeScope_Especificacao_Tecnica.md

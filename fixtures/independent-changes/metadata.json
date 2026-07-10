@@ -1,0 +1,8 @@
+{
+  "name": "independent-changes",
+  "classification": "independent",
+  "expectedStrategies": ["auto"],
+  "autoResolvable": true,
+  "eol": "LF",
+  "encoding": "UTF-8"
+}

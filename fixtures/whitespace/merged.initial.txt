@@ -1,0 +1,7 @@
+function run() {
+<<<<<<< HEAD
+  return compute();
+=======
+return compute(); // cached
+>>>>>>> feature/cache
+}

@@ -1,0 +1,19 @@
+import { a } from "./a";
+import { b } from "./b";
+
+<<<<<<< HEAD
+export function second() {
+  return b();
+}
+
+export function first() {
+  return a();
+=======
+export function first() {
+  return a(1);
+}
+
+export function second() {
+  return b();
+>>>>>>> feature/arg
+}

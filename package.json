@@ -1,0 +1,30 @@
+{
+  "name": "mergescope-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MergeScope — visual Git merge conflict resolution against the common ancestor",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @mergescope/desktop",
+    "build": "npm run build --workspace @mergescope/desktop",
+    "tauri": "npm run tauri --workspace @mergescope/desktop",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "eslint": "^9.20.0",
+    "prettier": "^3.5.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.24.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

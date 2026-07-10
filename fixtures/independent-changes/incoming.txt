@@ -1,0 +1,4 @@
+validateOrder(order);
+calculateTotal(order);
+validateCreditLimit(order);
+saveOrder(order);

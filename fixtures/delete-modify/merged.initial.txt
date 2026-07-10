@@ -1,0 +1,7 @@
+function setup() {
+<<<<<<< HEAD
+=======
+  legacyInit({ strict: true });
+>>>>>>> feature/strict
+  configure();
+}

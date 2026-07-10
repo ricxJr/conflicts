@@ -1,0 +1,3 @@
+# Keep fixture bytes exactly as authored (EOL/encoding fidelity matters).
+fixtures/** -text
+* text=auto

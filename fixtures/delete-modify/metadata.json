@@ -1,0 +1,8 @@
+{
+  "name": "delete-modify",
+  "classification": "delete-modify",
+  "expectedStrategies": ["manual", "incoming"],
+  "autoResolvable": false,
+  "eol": "LF",
+  "encoding": "UTF-8"
+}

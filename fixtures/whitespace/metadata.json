@@ -1,0 +1,9 @@
+{
+  "name": "whitespace-only-vs-content",
+  "classification": "overlapping",
+  "expectedStrategies": ["manual", "incoming"],
+  "autoResolvable": false,
+  "note": "With ignoreWhitespace enabled the current side becomes a no-op and the group collapses to incoming-only.",
+  "eol": "LF",
+  "encoding": "UTF-8"
+}

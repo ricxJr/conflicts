@@ -1,0 +1,5 @@
+<<<<<<< HEAD
+const timeout = 5000;
+=======
+const requestTimeout = 3000;
+>>>>>>> feature/rename

@@ -1,0 +1,3 @@
+validateOrder(order);
+calculateTotal(order);
+saveOrder(order);

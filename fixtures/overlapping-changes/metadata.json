@@ -1,0 +1,8 @@
+{
+  "name": "rename-and-value-change",
+  "classification": "overlapping",
+  "expectedStrategies": ["manual"],
+  "autoResolvable": false,
+  "eol": "LF",
+  "encoding": "UTF-8"
+}

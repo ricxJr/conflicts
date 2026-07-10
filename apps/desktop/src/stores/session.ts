@@ -1,0 +1,345 @@
+import { create } from "zustand";
+import {
+  analyzeMerge,
+  buildResult,
+  hasConflictMarkers,
+  isConflicting,
+  joinLines,
+  resolutionOutput,
+  splitLines,
+  type BuildResultOutput,
+  type ConflictGroup,
+  type MergeAnalysis,
+  type Resolution,
+  type ResolutionStrategy,
+} from "@mergescope/merge-engine";
+import type { BackendError, OpenSessionOutput, Preferences } from "../types/session";
+import { DEFAULT_PREFERENCES } from "../types/session";
+import * as backend from "../services/backend";
+import { editors, revealBaseLine } from "./controllers";
+
+export type Phase = "loading" | "ready" | "error";
+
+export interface DialogState {
+  kind: "confirm-cancel" | "confirm-save-unresolved" | "external-change" | "info";
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  onConfirm?: () => void;
+  extraActions?: { label: string; action: () => void }[];
+}
+
+interface SessionStore {
+  phase: Phase;
+  errorMessage?: string;
+  session?: OpenSessionOutput;
+  analysis?: MergeAnalysis;
+  initialResult?: BuildResultOutput;
+  groups: ConflictGroup[];
+  activeIndex: number;
+  unresolvedCount: number;
+  dirty: boolean;
+  savedCleanly: boolean;
+  resultHash: string;
+  prefs: Preferences;
+  paletteOpen: boolean;
+  dialog: DialogState | null;
+  cursor: { line: number; column: number };
+
+  init(): Promise<void>;
+  currentLabel(): string;
+  incomingLabel(): string;
+  applyStrategy(groupId: string, strategy: ResolutionStrategy): void;
+  resetGroup(groupId: string): void;
+  markReviewed(groupId: string): void;
+  setActiveIndex(index: number): void;
+  nextConflict(): void;
+  prevConflict(): void;
+  onRegionsEdited(changedGroupIds: string[]): void;
+  save(closeAfter: boolean): Promise<void>;
+  cancel(): void;
+  setPrefs(patch: Partial<Preferences>): void;
+  setPaletteOpen(open: boolean): void;
+  setDialog(dialog: DialogState | null): void;
+  setCursor(line: number, column: number): void;
+  rebuildResult(): void;
+}
+
+function countUnresolved(groups: ConflictGroup[]): number {
+  return groups.filter((g) => g.status === "unresolved").length;
+}
+
+function makeResolution(strategy: ResolutionStrategy, manualLines?: string[]): Resolution {
+  return { strategy, manualLines, updatedAt: new Date().toISOString() };
+}
+
+export const useSession = create<SessionStore>((set, get) => ({
+  phase: "loading",
+  groups: [],
+  activeIndex: 0,
+  unresolvedCount: 0,
+  dirty: false,
+  savedCleanly: false,
+  resultHash: "",
+  prefs: DEFAULT_PREFERENCES,
+  paletteOpen: false,
+  dialog: null,
+  cursor: { line: 1, column: 1 },
+
+  async init() {
+    try {
+      const [prefs, session] = await Promise.all([
+        backend.getPreferences(),
+        backend.openMergeSession(),
+      ]);
+      const analysis = analyzeMerge(
+        session.files.base?.content,
+        session.files.current.content,
+        session.files.incoming.content,
+      );
+      const initialResult = buildResult(analysis.baseLines, analysis.groups, {
+        currentLabel: session.cli.currentLabel ?? "CURRENT",
+        incomingLabel: session.cli.incomingLabel ?? "INCOMING",
+      });
+      const firstUnresolved = analysis.groups.findIndex((g) => g.status === "unresolved");
+      set({
+        phase: "ready",
+        prefs,
+        session,
+        analysis,
+        initialResult,
+        groups: analysis.groups,
+        activeIndex: firstUnresolved >= 0 ? firstUnresolved : 0,
+        unresolvedCount: countUnresolved(analysis.groups),
+        resultHash: session.files.result.hash,
+        savedCleanly: false,
+        dirty: false,
+      });
+    } catch (error) {
+      set({
+        phase: "error",
+        errorMessage:
+          typeof error === "string" ? error : ((error as BackendError)?.message ?? String(error)),
+      });
+    }
+  },
+
+  currentLabel() {
+    return get().session?.cli.currentLabel ?? "CURRENT";
+  },
+  incomingLabel() {
+    return get().session?.cli.incomingLabel ?? "INCOMING";
+  },
+
+  applyStrategy(groupId, strategy) {
+    const { analysis, groups } = get();
+    const group = groups.find((g) => g.id === groupId);
+    if (!analysis || !group) return;
+
+    const resolution = makeResolution(strategy);
+    const lines = resolutionOutput(analysis.baseLines, group, resolution);
+    editors.result?.replaceRegion(groupId, lines);
+
+    set({
+      groups: groups.map((g) => (g.id === groupId ? { ...g, status: "resolved", resolution } : g)),
+      dirty: true,
+    });
+    set((s) => ({ unresolvedCount: countUnresolved(s.groups) }));
+  },
+
+  resetGroup(groupId) {
+    const { analysis, groups, currentLabel, incomingLabel } = get();
+    const group = groups.find((g) => g.id === groupId);
+    if (!analysis || !group) return;
+
+    const conflicting = isConflicting(group);
+    if (conflicting) {
+      // Restore the conflict-marker block.
+      const markerGroup: ConflictGroup = { ...group, status: "unresolved", resolution: undefined };
+      const rebuilt = buildResult(analysis.baseLines, [markerGroup], {
+        currentLabel: currentLabel(),
+        incomingLabel: incomingLabel(),
+      });
+      const region = rebuilt.regions[0];
+      editors.result?.replaceRegion(groupId, rebuilt.lines.slice(region.startLine, region.endLine));
+      set({
+        groups: groups.map((g) =>
+          g.id === groupId ? { ...g, status: "unresolved", resolution: undefined } : g,
+        ),
+        dirty: true,
+      });
+    } else {
+      // Non-conflicting groups reset to their automatic resolution.
+      const original = analysis.groups.find((g) => g.id === groupId);
+      const resolution = original?.resolution;
+      if (!resolution) return;
+      const lines = resolutionOutput(analysis.baseLines, group, resolution);
+      editors.result?.replaceRegion(groupId, lines);
+      set({
+        groups: groups.map((g) =>
+          g.id === groupId ? { ...g, status: "resolved", resolution } : g,
+        ),
+        dirty: true,
+      });
+    }
+    set((s) => ({ unresolvedCount: countUnresolved(s.groups) }));
+  },
+
+  markReviewed(groupId) {
+    set((s) => ({
+      groups: s.groups.map((g) =>
+        g.id === groupId && g.status !== "unresolved" ? { ...g, status: "reviewed" } : g,
+      ),
+    }));
+  },
+
+  setActiveIndex(index) {
+    const { groups } = get();
+    if (groups.length === 0) return;
+    const clamped = ((index % groups.length) + groups.length) % groups.length;
+    set({ activeIndex: clamped });
+    const group = groups[clamped];
+    revealBaseLine(group.baseRange.start);
+    editors.result?.revealGroup(group.id);
+  },
+
+  nextConflict() {
+    get().setActiveIndex(get().activeIndex + 1);
+  },
+  prevConflict() {
+    get().setActiveIndex(get().activeIndex - 1);
+  },
+
+  onRegionsEdited(changedGroupIds) {
+    if (changedGroupIds.length === 0) return;
+    const { groups } = get();
+    const updated = groups.map((g) => {
+      if (!changedGroupIds.includes(g.id)) return g;
+      const lines = editors.result?.getRegionLines(g.id) ?? [];
+      if (hasConflictMarkers(lines)) {
+        return { ...g, status: "unresolved" as const, resolution: undefined };
+      }
+      return {
+        ...g,
+        status: "resolved" as const,
+        resolution: makeResolution("manual", lines),
+      };
+    });
+    set({ groups: updated, dirty: true, unresolvedCount: countUnresolved(updated) });
+  },
+
+  async save(closeAfter) {
+    const state = get();
+    const controller = editors.result;
+    if (!controller || !state.session) return;
+
+    const text = controller.getText();
+    const { lines } = splitLines(text);
+    const unresolvedMarkers = hasConflictMarkers(lines);
+
+    const doSave = async (allowOverwrite: boolean) => {
+      try {
+        const saved = await backend.saveMergeResult(text, get().resultHash, allowOverwrite);
+        const cleanly = !unresolvedMarkers && countUnresolved(get().groups) === 0;
+        set({ dirty: false, savedCleanly: cleanly, resultHash: saved.hash, dialog: null });
+        await backend.setExitCode(cleanly ? 0 : 1);
+        if (closeAfter) await backend.exitApp(cleanly ? 0 : 1);
+      } catch (error) {
+        const err = error as BackendError;
+        if (err?.code === "external-change") {
+          set({
+            dialog: {
+              kind: "external-change",
+              title: "File changed outside MergeScope",
+              message:
+                "The result file changed on disk since this session started. Overwrite it with your resolution, or cancel?",
+              confirmLabel: "Overwrite",
+              onConfirm: () => void doSave(true),
+            },
+          });
+        } else {
+          set({
+            dialog: {
+              kind: "info",
+              title: "Save failed",
+              message: err?.message ?? String(error),
+            },
+          });
+        }
+      }
+    };
+
+    if (unresolvedMarkers) {
+      set({
+        dialog: {
+          kind: "confirm-save-unresolved",
+          title: "Unresolved conflicts",
+          message:
+            "The result still contains conflict markers. Save anyway? Git will keep the file as conflicted (exit code 1).",
+          confirmLabel: "Save anyway",
+          onConfirm: () => void doSave(false),
+        },
+      });
+      return;
+    }
+    await doSave(false);
+  },
+
+  cancel() {
+    const { dirty } = get();
+    const doCancel = () => void backend.exitApp(1);
+    if (dirty) {
+      set({
+        dialog: {
+          kind: "confirm-cancel",
+          title: "Discard changes?",
+          message:
+            "The merge result was not saved. Close anyway? The conflict will remain pending in Git.",
+          confirmLabel: "Discard and close",
+          onConfirm: doCancel,
+        },
+      });
+      return;
+    }
+    doCancel();
+  },
+
+  setPrefs(patch) {
+    set((s) => {
+      const prefs = { ...s.prefs, ...patch };
+      void backend.savePreferences(prefs);
+      return { prefs };
+    });
+  },
+
+  setPaletteOpen(open) {
+    set({ paletteOpen: open });
+  },
+
+  setDialog(dialog) {
+    set({ dialog });
+  },
+
+  setCursor(line, column) {
+    set({ cursor: { line, column } });
+  },
+
+  rebuildResult() {
+    // Recovery command: regenerate the whole result from current resolutions.
+    const { analysis, groups, currentLabel, incomingLabel } = get();
+    if (!analysis) return;
+    const rebuilt = buildResult(analysis.baseLines, groups, {
+      currentLabel: currentLabel(),
+      incomingLabel: incomingLabel(),
+    });
+    set({ initialResult: rebuilt, dirty: true });
+  },
+}));
+
+/** Serialization helper used on save paths that need the file's original EOL flags. */
+export function textStats(text: string): { lineCount: number; hasMarkers: boolean } {
+  const { lines } = splitLines(text);
+  return { lineCount: lines.length, hasMarkers: hasConflictMarkers(lines) };
+}
+
+export { joinLines };
