@@ -17,6 +17,7 @@ import type { BackendError, OpenSessionOutput, Preferences } from "../types/sess
 import { DEFAULT_PREFERENCES } from "../types/session";
 import * as backend from "../services/backend";
 import { editors, revealBaseLine } from "./controllers";
+import i18n from "../i18n";
 
 export type Phase = "loading" | "ready" | "error";
 
@@ -43,6 +44,7 @@ interface SessionStore {
   resultHash: string;
   prefs: Preferences;
   paletteOpen: boolean;
+  settingsOpen: boolean;
   dialog: DialogState | null;
   cursor: { line: number; column: number };
 
@@ -60,6 +62,7 @@ interface SessionStore {
   cancel(): void;
   setPrefs(patch: Partial<Preferences>): void;
   setPaletteOpen(open: boolean): void;
+  setSettingsOpen(open: boolean): void;
   setDialog(dialog: DialogState | null): void;
   setCursor(line: number, column: number): void;
   rebuildResult(): void;
@@ -83,6 +86,7 @@ export const useSession = create<SessionStore>((set, get) => ({
   resultHash: "",
   prefs: DEFAULT_PREFERENCES,
   paletteOpen: false,
+  settingsOpen: false,
   dialog: null,
   cursor: { line: 1, column: 1 },
 
@@ -92,6 +96,7 @@ export const useSession = create<SessionStore>((set, get) => ({
         backend.getPreferences(),
         backend.openMergeSession(),
       ]);
+      void i18n.changeLanguage(prefs.language);
       const analysis = analyzeMerge(
         session.files.base?.content,
         session.files.current.content,
@@ -250,10 +255,9 @@ export const useSession = create<SessionStore>((set, get) => ({
           set({
             dialog: {
               kind: "external-change",
-              title: "File changed outside MergeScope",
-              message:
-                "The result file changed on disk since this session started. Overwrite it with your resolution, or cancel?",
-              confirmLabel: "Overwrite",
+              title: i18n.t("dialog.externalChange.title"),
+              message: i18n.t("dialog.externalChange.message"),
+              confirmLabel: i18n.t("dialog.externalChange.confirm"),
               onConfirm: () => void doSave(true),
             },
           });
@@ -261,7 +265,7 @@ export const useSession = create<SessionStore>((set, get) => ({
           set({
             dialog: {
               kind: "info",
-              title: "Save failed",
+              title: i18n.t("dialog.saveFailed.title"),
               message: err?.message ?? String(error),
             },
           });
@@ -273,10 +277,9 @@ export const useSession = create<SessionStore>((set, get) => ({
       set({
         dialog: {
           kind: "confirm-save-unresolved",
-          title: "Unresolved conflicts",
-          message:
-            "The result still contains conflict markers. Save anyway? Git will keep the file as conflicted (exit code 1).",
-          confirmLabel: "Save anyway",
+          title: i18n.t("dialog.unresolved.title"),
+          message: i18n.t("dialog.unresolved.message"),
+          confirmLabel: i18n.t("dialog.unresolved.confirm"),
           onConfirm: () => void doSave(false),
         },
       });
@@ -292,10 +295,9 @@ export const useSession = create<SessionStore>((set, get) => ({
       set({
         dialog: {
           kind: "confirm-cancel",
-          title: "Discard changes?",
-          message:
-            "The merge result was not saved. Close anyway? The conflict will remain pending in Git.",
-          confirmLabel: "Discard and close",
+          title: i18n.t("dialog.discard.title"),
+          message: i18n.t("dialog.discard.message"),
+          confirmLabel: i18n.t("dialog.discard.confirm"),
           onConfirm: doCancel,
         },
       });
@@ -307,6 +309,9 @@ export const useSession = create<SessionStore>((set, get) => ({
   setPrefs(patch) {
     set((s) => {
       const prefs = { ...s.prefs, ...patch };
+      if (patch.language && patch.language !== s.prefs.language) {
+        void i18n.changeLanguage(patch.language);
+      }
       void backend.savePreferences(prefs);
       return { prefs };
     });
@@ -314,6 +319,10 @@ export const useSession = create<SessionStore>((set, get) => ({
 
   setPaletteOpen(open) {
     set({ paletteOpen: open });
+  },
+
+  setSettingsOpen(open) {
+    set({ settingsOpen: open });
   },
 
   setDialog(dialog) {

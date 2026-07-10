@@ -32,7 +32,11 @@ external merge tools.
   Reject, plus free manual editing of the result with undo/redo, search and
   syntax highlighting.
 - Conflict list sidebar, keyboard navigation, Command Palette
-  (`Ctrl+Shift+P`), dark/light/system/high-contrast themes.
+  (`Ctrl+Shift+P`), and a Settings panel (`Ctrl+,`).
+- Fully customizable: interface language (English / Português-BR), UI and editor
+  fonts and sizes, remappable keyboard shortcuts, and themes —
+  dark/light/system/high-contrast plus a **custom** theme with per-token color
+  editing (diff colors, text, accents, and more).
 - Encoding and EOL fidelity: UTF-8 (with/without BOM), CRLF/LF and trailing
   newline are preserved on save; mixed EOL is flagged.
 - Atomic writes (temp file + rename on the same volume), external-change
@@ -110,7 +114,24 @@ Client-specific guides: [Git](docs/integrations/git.md) ·
 | Accept Incoming     | `Alt+2`        |
 | Accept Both         | `Alt+3`        |
 | Command Palette     | `Ctrl+Shift+P` |
+| Settings            | `Ctrl+,`       |
 | Find (focused pane) | `Ctrl+F`       |
+
+All shortcuts (except Find, handled by the editor) are remappable in
+**Settings → Shortcuts**.
+
+## Customization
+
+Open the Settings panel from the ⚙ button in the top bar, the `Ctrl+,` shortcut,
+or the Command Palette. Everything persists to
+`%APPDATA%/MergeScope/settings.json`:
+
+- **Appearance** — pick a theme, or choose **Custom** to edit every color token
+  (background, text, accent, diff added/removed, conflict, …) live.
+- **Font** — set the interface and editor font family and size independently.
+- **Language** — switch between English and Português (Brasil).
+- **Shortcuts** — click a command's shortcut to record a new key chord;
+  `Backspace` clears it and `↺` restores the default.
 
 ## Status
 
@@ -121,3 +142,12 @@ fidelity, exit codes, NSIS installer. See
 [docs/architecture/overview.md](docs/architecture/overview.md) for the module
 map. Roadmap phases 3–4 (repository launcher, move detection, macOS/Linux,
 semantic plugins) are not implemented yet.
+
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup,
+conventions, and how to add translations, themes, and shortcuts.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

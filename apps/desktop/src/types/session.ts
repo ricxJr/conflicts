@@ -59,8 +59,63 @@ export interface BackendError {
   message: string;
 }
 
+export type ThemeName = "dark" | "light" | "system" | "high-contrast" | "custom";
+export type Language = "en" | "pt-br";
+
+/** Every color token the UI and editors expose for the "custom" theme. */
+export interface CustomTheme {
+  bg: string;
+  bgElevated: string;
+  bgPanelHeader: string;
+  border: string;
+  text: string;
+  textDim: string;
+  accent: string;
+  danger: string;
+  ok: string;
+  warn: string;
+  conflict: string;
+  independent: string;
+  resolved: string;
+  reviewed: string;
+  /** Diff added/removed backgrounds inside the Monaco editors. */
+  diffInserted: string;
+  diffRemoved: string;
+  editorBg: string;
+}
+
+/** Seed for the custom theme = the built-in dark palette (global.css / monaco.ts). */
+export const DEFAULT_CUSTOM_THEME: CustomTheme = {
+  bg: "#16181d",
+  bgElevated: "#1e2128",
+  bgPanelHeader: "#20242c",
+  border: "#2c313a",
+  text: "#d7dce3",
+  textDim: "#8b93a1",
+  accent: "#4d9fff",
+  danger: "#f85149",
+  ok: "#2ea043",
+  warn: "#d29922",
+  conflict: "#f85149",
+  independent: "#a371f7",
+  resolved: "#2ea043",
+  reviewed: "#58a6ff",
+  diffInserted: "#2ea043",
+  diffRemoved: "#f85149",
+  editorBg: "#16181d",
+};
+
 export interface Preferences {
-  theme: "dark" | "light" | "system" | "high-contrast";
+  theme: ThemeName;
+  customTheme: CustomTheme;
+  language: Language;
+  /** Empty string = inherit the built-in default font. */
+  uiFontFamily: string;
+  editorFontFamily: string;
+  uiFontSize: number;
+  editorFontSize: number;
+  /** Overrides on top of DEFAULT_KEYBINDINGS: commandId -> chord. */
+  keybindings: Record<string, string>;
   showBasePanel: boolean;
   showConflictList: boolean;
   hideUnchangedRegions: boolean;
@@ -72,6 +127,13 @@ export interface Preferences {
 
 export const DEFAULT_PREFERENCES: Preferences = {
   theme: "dark",
+  customTheme: DEFAULT_CUSTOM_THEME,
+  language: "en",
+  uiFontFamily: "",
+  editorFontFamily: "",
+  uiFontSize: 13,
+  editorFontSize: 13,
+  keybindings: {},
   showBasePanel: false,
   showConflictList: true,
   hideUnchangedRegions: false,

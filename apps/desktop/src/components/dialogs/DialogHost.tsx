@@ -1,6 +1,8 @@
+import { useTranslation } from "react-i18next";
 import { useSession } from "../../stores/session";
 
 export function DialogHost() {
+  const { t } = useTranslation();
   const dialog = useSession((s) => s.dialog);
   const setDialog = useSession((s) => s.setDialog);
 
@@ -13,7 +15,7 @@ export function DialogHost() {
         <p>{dialog.message}</p>
         <div className="dialog-actions">
           <button className="btn-secondary" onClick={() => setDialog(null)} autoFocus>
-            {dialog.kind === "info" ? "Close" : "Keep editing"}
+            {dialog.kind === "info" ? t("dialog.close") : t("dialog.keepEditing")}
           </button>
           {dialog.extraActions?.map((a) => (
             <button
@@ -36,7 +38,7 @@ export function DialogHost() {
                 confirm?.();
               }}
             >
-              {dialog.confirmLabel ?? "Confirm"}
+              {dialog.confirmLabel ?? t("dialog.confirm")}
             </button>
           )}
         </div>

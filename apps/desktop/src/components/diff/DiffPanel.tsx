@@ -25,6 +25,8 @@ export function DiffPanel({
   const editorRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(null);
   const hideUnchanged = useSession((s) => s.prefs.hideUnchangedRegions);
   const ignoreWhitespace = useSession((s) => s.prefs.ignoreWhitespace);
+  const editorFontFamily = useSession((s) => s.prefs.editorFontFamily);
+  const editorFontSize = useSession((s) => s.prefs.editorFontSize);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -41,7 +43,8 @@ export function DiffPanel({
       scrollBeyondLastLine: false,
       renderOverviewRuler: true,
       diffWordWrap: "off",
-      fontSize: 13,
+      fontSize: editorFontSize,
+      fontFamily: editorFontFamily || undefined,
       lineNumbersMinChars: 3,
       ignoreTrimWhitespace: ignoreWhitespace,
       hideUnchangedRegions: { enabled: hideUnchanged },
@@ -63,8 +66,10 @@ export function DiffPanel({
     editorRef.current?.updateOptions({
       ignoreTrimWhitespace: ignoreWhitespace,
       hideUnchangedRegions: { enabled: hideUnchanged },
+      fontSize: editorFontSize,
+      fontFamily: editorFontFamily || undefined,
     });
-  }, [hideUnchanged, ignoreWhitespace]);
+  }, [hideUnchanged, ignoreWhitespace, editorFontSize, editorFontFamily]);
 
   return (
     <section className="panel diff-panel" aria-label={title}>

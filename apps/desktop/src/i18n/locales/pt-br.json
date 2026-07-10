@@ -1,0 +1,209 @@
+{
+  "app": {
+    "loading": "Carregando sessão de merge…",
+    "startError": "O MergeScope não pôde iniciar",
+    "expectedUsage": "Uso esperado:"
+  },
+  "panel": {
+    "currentVsBase": "{{label}} vs BASE",
+    "incomingVsBase": "BASE vs {{label}}",
+    "baseAria": "Base (ancestral comum)",
+    "mergedResult": "Resultado do merge"
+  },
+  "topbar": {
+    "resolved": "{{resolved}}/{{total}} resolvidos",
+    "changesOnly": "Só alterações",
+    "changesOnlyTitle": "Recolher regiões inalteradas nos painéis de diff",
+    "ignoreWs": "Ignorar espaços",
+    "ignoreWsTitle": "Ignorar diferenças só de espaços em branco",
+    "base": "Base",
+    "baseTitle": "Fixar o arquivo base como um terceiro painel",
+    "list": "Lista",
+    "listTitle": "Mostrar a barra lateral de conflitos",
+    "themeLabel": "Tema",
+    "commandPalette": "Paleta de comandos",
+    "settings": "Configurações"
+  },
+  "theme": {
+    "dark": "Escuro",
+    "light": "Claro",
+    "system": "Sistema",
+    "high-contrast": "Alto contraste",
+    "custom": "Personalizado"
+  },
+  "language": {
+    "en": "English",
+    "pt-br": "Português (Brasil)"
+  },
+  "status": {
+    "unresolved": "{{count}} não resolvido(s)",
+    "allResolved": "Todos os conflitos resolvidos",
+    "mixedEol": "⚠ EOL misto",
+    "mixedEolTitle": "O arquivo mistura finais de linha CRLF e LF",
+    "decode": "⚠ decodificação",
+    "decodeTitle": "Alguns bytes não puderam ser decodificados como UTF-8",
+    "unsaved": "● não salvo",
+    "lineCol": "Lin {{line}}, Col {{column}}"
+  },
+  "groupStatus": {
+    "unresolved": "não resolvido",
+    "resolved": "resolvido",
+    "reviewed": "revisado",
+    "partial": "parcial"
+  },
+  "toolbar": {
+    "aria": "Ações de resolução",
+    "prev": "Conflito anterior",
+    "next": "Próximo conflito",
+    "statusTitle": "Situação: {{status}}",
+    "bothOrder": "Ambos: escolher a ordem"
+  },
+  "classification": {
+    "independent": "Alterações independentes",
+    "overlapping": "Alterações sobrepostas",
+    "current-only": "Só no Atual",
+    "incoming-only": "Só no Recebido",
+    "same-change": "Mesma alteração",
+    "delete-modify": "Exclusão vs modificação",
+    "unknown": "Não classificado"
+  },
+  "action": {
+    "acceptCurrent": "Aceitar Atual",
+    "acceptIncoming": "Aceitar Recebido",
+    "acceptBoth": "Aceitar Ambos",
+    "bothCurrentFirst": "Ambos — Atual primeiro",
+    "bothIncomingFirst": "Ambos — Recebido primeiro",
+    "acceptBase": "Aceitar Base",
+    "rejectBoth": "Rejeitar Ambos",
+    "markReviewed": "Marcar revisado",
+    "reset": "Redefinir",
+    "save": "Salvar",
+    "saveClose": "Salvar e fechar",
+    "cancel": "Cancelar"
+  },
+  "tooltip": {
+    "prev": "Conflito anterior",
+    "next": "Próximo conflito",
+    "acceptCurrent": "Aceitar Atual",
+    "acceptIncoming": "Aceitar Recebido",
+    "acceptBoth": "Aceitar Ambos",
+    "acceptBase": "Aceitar Base (voltar ao ancestral comum)",
+    "rejectBoth": "Rejeitar Ambos (manter o conteúdo da base)",
+    "markReviewed": "Marcar como revisado",
+    "reset": "Redefinir este conflito para o estado inicial",
+    "cancel": "Cancelar — código de saída 1",
+    "save": "Salvar",
+    "saveClose": "Salvar e fechar — código de saída 0"
+  },
+  "conflictList": {
+    "aria": "Conflitos",
+    "title": "Conflitos",
+    "empty": "Nenhuma diferença"
+  },
+  "palette": {
+    "aria": "Paleta de comandos",
+    "placeholder": "Digite um comando…",
+    "empty": "Nenhum comando corresponde"
+  },
+  "dialog": {
+    "close": "Fechar",
+    "keepEditing": "Continuar editando",
+    "confirm": "Confirmar",
+    "unresolved": {
+      "title": "Conflitos não resolvidos",
+      "message": "O resultado ainda contém marcadores de conflito. Salvar mesmo assim? O Git manterá o arquivo como conflitado (código de saída 1).",
+      "confirm": "Salvar mesmo assim"
+    },
+    "externalChange": {
+      "title": "Arquivo alterado fora do MergeScope",
+      "message": "O arquivo de resultado mudou em disco desde o início desta sessão. Sobrescrever com a sua resolução, ou cancelar?",
+      "confirm": "Sobrescrever"
+    },
+    "saveFailed": {
+      "title": "Falha ao salvar"
+    },
+    "discard": {
+      "title": "Descartar alterações?",
+      "message": "O resultado do merge não foi salvo. Fechar mesmo assim? O conflito continuará pendente no Git.",
+      "confirm": "Descartar e fechar"
+    }
+  },
+  "command": {
+    "next": "Ir para o próximo conflito",
+    "prev": "Ir para o conflito anterior",
+    "first": "Ir para o primeiro conflito",
+    "last": "Ir para o último conflito",
+    "accept-current": "Aceitar Atual",
+    "accept-incoming": "Aceitar Recebido",
+    "accept-both": "Aceitar Ambos (Atual primeiro)",
+    "accept-both-incoming": "Aceitar Ambos (Recebido primeiro)",
+    "accept-base": "Aceitar Base",
+    "reject-both": "Rejeitar Ambos",
+    "reset": "Redefinir conflito",
+    "mark-reviewed": "Marcar conflito como revisado",
+    "toggle-base": "Alternar painel base",
+    "toggle-list": "Alternar lista de conflitos",
+    "toggle-changes-only": "Alternar visão só de alterações",
+    "toggle-whitespace": "Alternar ignorar espaços em branco",
+    "theme-dark": "Tema: Escuro",
+    "theme-light": "Tema: Claro",
+    "theme-system": "Tema: Sistema",
+    "theme-hc": "Tema: Alto contraste",
+    "palette": "Mostrar paleta de comandos",
+    "open-settings": "Abrir configurações",
+    "save": "Salvar resultado",
+    "save-close": "Salvar resultado e fechar",
+    "cancel": "Cancelar e fechar (manter conflito pendente)"
+  },
+  "settings": {
+    "title": "Configurações",
+    "close": "Fechar",
+    "tab": {
+      "appearance": "Aparência",
+      "font": "Fonte",
+      "language": "Idioma",
+      "shortcuts": "Atalhos"
+    },
+    "theme": "Tema",
+    "customColors": "Cores personalizadas",
+    "restoreDefaults": "Restaurar padrões",
+    "color": {
+      "bg": "Fundo",
+      "bgElevated": "Fundo elevado",
+      "bgPanelHeader": "Cabeçalho de painel",
+      "border": "Borda",
+      "text": "Texto",
+      "textDim": "Texto esmaecido",
+      "accent": "Destaque",
+      "danger": "Perigo",
+      "ok": "Sucesso",
+      "warn": "Aviso",
+      "conflict": "Conflito",
+      "independent": "Alteração independente",
+      "resolved": "Resolvido",
+      "reviewed": "Revisado",
+      "diffInserted": "Diff adicionado",
+      "diffRemoved": "Diff removido",
+      "editorBg": "Fundo do editor"
+    },
+    "font": {
+      "uiFamily": "Fonte da interface",
+      "editorFamily": "Fonte do editor",
+      "uiSize": "Tamanho da interface",
+      "editorSize": "Tamanho do editor",
+      "familyPlaceholder": "Padrão",
+      "sizeUnit": "px"
+    },
+    "language": "Idioma",
+    "shortcuts": {
+      "command": "Comando",
+      "shortcut": "Atalho",
+      "press": "Pressione as teclas…",
+      "none": "Não atribuído",
+      "clear": "Limpar",
+      "conflictWith": "Também usado por: {{command}}",
+      "reset": "Redefinir",
+      "resetAll": "Redefinir todos os atalhos"
+    }
+  }
+}

@@ -1,0 +1,209 @@
+{
+  "app": {
+    "loading": "Loading merge session…",
+    "startError": "MergeScope could not start",
+    "expectedUsage": "Expected usage:"
+  },
+  "panel": {
+    "currentVsBase": "{{label}} vs BASE",
+    "incomingVsBase": "BASE vs {{label}}",
+    "baseAria": "Base (common ancestor)",
+    "mergedResult": "Merged result"
+  },
+  "topbar": {
+    "resolved": "{{resolved}}/{{total}} resolved",
+    "changesOnly": "Changes only",
+    "changesOnlyTitle": "Collapse unchanged regions in the diff panels",
+    "ignoreWs": "Ignore WS",
+    "ignoreWsTitle": "Ignore whitespace-only differences",
+    "base": "Base",
+    "baseTitle": "Pin the base file as a third panel",
+    "list": "List",
+    "listTitle": "Show the conflict list sidebar",
+    "themeLabel": "Theme",
+    "commandPalette": "Command Palette",
+    "settings": "Settings"
+  },
+  "theme": {
+    "dark": "Dark",
+    "light": "Light",
+    "system": "System",
+    "high-contrast": "High Contrast",
+    "custom": "Custom"
+  },
+  "language": {
+    "en": "English",
+    "pt-br": "Português (Brasil)"
+  },
+  "status": {
+    "unresolved": "{{count}} unresolved",
+    "allResolved": "All conflicts resolved",
+    "mixedEol": "⚠ mixed EOL",
+    "mixedEolTitle": "The file mixes CRLF and LF line endings",
+    "decode": "⚠ decode",
+    "decodeTitle": "Some bytes could not be decoded as UTF-8",
+    "unsaved": "● unsaved",
+    "lineCol": "Ln {{line}}, Col {{column}}"
+  },
+  "groupStatus": {
+    "unresolved": "unresolved",
+    "resolved": "resolved",
+    "reviewed": "reviewed",
+    "partial": "partial"
+  },
+  "toolbar": {
+    "aria": "Resolution actions",
+    "prev": "Previous conflict",
+    "next": "Next conflict",
+    "statusTitle": "Status: {{status}}",
+    "bothOrder": "Both: choose order"
+  },
+  "classification": {
+    "independent": "Independent changes",
+    "overlapping": "Overlapping changes",
+    "current-only": "Current only",
+    "incoming-only": "Incoming only",
+    "same-change": "Same change",
+    "delete-modify": "Delete vs modify",
+    "unknown": "Unclassified"
+  },
+  "action": {
+    "acceptCurrent": "Accept Current",
+    "acceptIncoming": "Accept Incoming",
+    "acceptBoth": "Accept Both",
+    "bothCurrentFirst": "Both — Current first",
+    "bothIncomingFirst": "Both — Incoming first",
+    "acceptBase": "Accept Base",
+    "rejectBoth": "Reject Both",
+    "markReviewed": "Mark Reviewed",
+    "reset": "Reset",
+    "save": "Save",
+    "saveClose": "Save & Close",
+    "cancel": "Cancel"
+  },
+  "tooltip": {
+    "prev": "Previous conflict",
+    "next": "Next conflict",
+    "acceptCurrent": "Accept Current",
+    "acceptIncoming": "Accept Incoming",
+    "acceptBoth": "Accept Both",
+    "acceptBase": "Accept Base (revert to the common ancestor)",
+    "rejectBoth": "Reject Both (keep the base content)",
+    "markReviewed": "Mark as reviewed",
+    "reset": "Reset this conflict to its initial state",
+    "cancel": "Cancel — exit code 1",
+    "save": "Save",
+    "saveClose": "Save and close — exit code 0"
+  },
+  "conflictList": {
+    "aria": "Conflicts",
+    "title": "Conflicts",
+    "empty": "No differences"
+  },
+  "palette": {
+    "aria": "Command palette",
+    "placeholder": "Type a command…",
+    "empty": "No matching commands"
+  },
+  "dialog": {
+    "close": "Close",
+    "keepEditing": "Keep editing",
+    "confirm": "Confirm",
+    "unresolved": {
+      "title": "Unresolved conflicts",
+      "message": "The result still contains conflict markers. Save anyway? Git will keep the file as conflicted (exit code 1).",
+      "confirm": "Save anyway"
+    },
+    "externalChange": {
+      "title": "File changed outside MergeScope",
+      "message": "The result file changed on disk since this session started. Overwrite it with your resolution, or cancel?",
+      "confirm": "Overwrite"
+    },
+    "saveFailed": {
+      "title": "Save failed"
+    },
+    "discard": {
+      "title": "Discard changes?",
+      "message": "The merge result was not saved. Close anyway? The conflict will remain pending in Git.",
+      "confirm": "Discard and close"
+    }
+  },
+  "command": {
+    "next": "Go to next conflict",
+    "prev": "Go to previous conflict",
+    "first": "Go to first conflict",
+    "last": "Go to last conflict",
+    "accept-current": "Accept Current",
+    "accept-incoming": "Accept Incoming",
+    "accept-both": "Accept Both (Current first)",
+    "accept-both-incoming": "Accept Both (Incoming first)",
+    "accept-base": "Accept Base",
+    "reject-both": "Reject Both",
+    "reset": "Reset conflict",
+    "mark-reviewed": "Mark conflict as reviewed",
+    "toggle-base": "Toggle base panel",
+    "toggle-list": "Toggle conflict list",
+    "toggle-changes-only": "Toggle changes-only view",
+    "toggle-whitespace": "Toggle ignore whitespace",
+    "theme-dark": "Theme: Dark",
+    "theme-light": "Theme: Light",
+    "theme-system": "Theme: System",
+    "theme-hc": "Theme: High Contrast",
+    "palette": "Show Command Palette",
+    "open-settings": "Open settings",
+    "save": "Save result",
+    "save-close": "Save result and close",
+    "cancel": "Cancel and close (keep conflict pending)"
+  },
+  "settings": {
+    "title": "Settings",
+    "close": "Close",
+    "tab": {
+      "appearance": "Appearance",
+      "font": "Font",
+      "language": "Language",
+      "shortcuts": "Shortcuts"
+    },
+    "theme": "Theme",
+    "customColors": "Custom colors",
+    "restoreDefaults": "Restore defaults",
+    "color": {
+      "bg": "Background",
+      "bgElevated": "Elevated background",
+      "bgPanelHeader": "Panel header",
+      "border": "Border",
+      "text": "Text",
+      "textDim": "Dimmed text",
+      "accent": "Accent",
+      "danger": "Danger",
+      "ok": "Success",
+      "warn": "Warning",
+      "conflict": "Conflict",
+      "independent": "Independent change",
+      "resolved": "Resolved",
+      "reviewed": "Reviewed",
+      "diffInserted": "Diff added",
+      "diffRemoved": "Diff removed",
+      "editorBg": "Editor background"
+    },
+    "font": {
+      "uiFamily": "Interface font",
+      "editorFamily": "Editor font",
+      "uiSize": "Interface size",
+      "editorSize": "Editor size",
+      "familyPlaceholder": "Default",
+      "sizeUnit": "px"
+    },
+    "language": "Language",
+    "shortcuts": {
+      "command": "Command",
+      "shortcut": "Shortcut",
+      "press": "Press keys…",
+      "none": "Unassigned",
+      "clear": "Clear",
+      "conflictWith": "Also used by: {{command}}",
+      "reset": "Reset",
+      "resetAll": "Reset all shortcuts"
+    }
+  }
+}

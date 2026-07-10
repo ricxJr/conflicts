@@ -1,20 +1,27 @@
+import { useTranslation } from "react-i18next";
 import { useSession } from "../../stores/session";
-import type { Preferences } from "../../types/session";
+import type { ThemeName } from "../../types/session";
+import { effectiveKeybindings, formatChord } from "../../features/keybindings";
 
-const THEMES: Preferences["theme"][] = ["dark", "light", "system", "high-contrast"];
+const THEMES: ThemeName[] = ["dark", "light", "system", "high-contrast", "custom"];
 
 export function TopBar() {
+  const { t } = useTranslation();
   const session = useSession((s) => s.session);
   const groups = useSession((s) => s.groups);
   const unresolved = useSession((s) => s.unresolvedCount);
   const prefs = useSession((s) => s.prefs);
   const setPrefs = useSession((s) => s.setPrefs);
   const setPaletteOpen = useSession((s) => s.setPaletteOpen);
+  const setSettingsOpen = useSession((s) => s.setSettingsOpen);
 
   const fileName = session?.files.result.fileName ?? "";
   const operation = session?.git?.operation ?? "merge";
   const worktree = session?.git?.worktreeRoot;
   const title = session?.cli.title;
+
+  const kb = effectiveKeybindings(prefs.keybindings);
+  const paletteChord = kb.palette ? ` (${formatChord(kb.palette)})` : "";
 
   return (
     <header className="topbar">
@@ -32,58 +39,66 @@ export function TopBar() {
       </div>
       <div className="topbar-right">
         <span className="topbar-conflicts" aria-live="polite">
-          {groups.length - unresolved}/{groups.length} resolved
+          {t("topbar.resolved", { resolved: groups.length - unresolved, total: groups.length })}
         </span>
-        <label className="toggle" title="Collapse unchanged regions in the diff panels">
+        <label className="toggle" title={t("topbar.changesOnlyTitle")}>
           <input
             type="checkbox"
             checked={prefs.hideUnchangedRegions}
             onChange={(e) => setPrefs({ hideUnchangedRegions: e.target.checked })}
           />
-          Changes only
+          {t("topbar.changesOnly")}
         </label>
-        <label className="toggle" title="Ignore whitespace-only differences">
+        <label className="toggle" title={t("topbar.ignoreWsTitle")}>
           <input
             type="checkbox"
             checked={prefs.ignoreWhitespace}
             onChange={(e) => setPrefs({ ignoreWhitespace: e.target.checked })}
           />
-          Ignore WS
+          {t("topbar.ignoreWs")}
         </label>
-        <label className="toggle" title="Pin the base file as a third panel">
+        <label className="toggle" title={t("topbar.baseTitle")}>
           <input
             type="checkbox"
             checked={prefs.showBasePanel}
             onChange={(e) => setPrefs({ showBasePanel: e.target.checked })}
           />
-          Base
+          {t("topbar.base")}
         </label>
-        <label className="toggle" title="Show the conflict list sidebar">
+        <label className="toggle" title={t("topbar.listTitle")}>
           <input
             type="checkbox"
             checked={prefs.showConflictList}
             onChange={(e) => setPrefs({ showConflictList: e.target.checked })}
           />
-          List
+          {t("topbar.list")}
         </label>
         <select
           className="theme-select"
           value={prefs.theme}
-          aria-label="Theme"
-          onChange={(e) => setPrefs({ theme: e.target.value as Preferences["theme"] })}
+          aria-label={t("topbar.themeLabel")}
+          onChange={(e) => setPrefs({ theme: e.target.value as ThemeName })}
         >
-          {THEMES.map((t) => (
-            <option key={t} value={t}>
-              {t}
+          {THEMES.map((th) => (
+            <option key={th} value={th}>
+              {t(`theme.${th}`)}
             </option>
           ))}
         </select>
         <button
           className="palette-button"
           onClick={() => setPaletteOpen(true)}
-          title="Command Palette (Ctrl+Shift+P)"
+          title={`${t("topbar.commandPalette")}${paletteChord}`}
         >
           ⌘
+        </button>
+        <button
+          className="settings-button"
+          onClick={() => setSettingsOpen(true)}
+          title={t("topbar.settings")}
+          aria-label={t("topbar.settings")}
+        >
+          ⚙
         </button>
       </div>
     </header>

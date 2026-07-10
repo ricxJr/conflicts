@@ -1,18 +1,11 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSession } from "../../stores/session";
 import { isConflicting } from "@mergescope/merge-engine";
-
-const CLASSIFICATION_LABEL: Record<string, string> = {
-  independent: "Independent changes",
-  overlapping: "Overlapping changes",
-  "current-only": "Current only",
-  "incoming-only": "Incoming only",
-  "same-change": "Same change",
-  "delete-modify": "Delete vs modify",
-  unknown: "Unclassified",
-};
+import { effectiveKeybindings, formatChord } from "../../features/keybindings";
 
 export function ResolutionToolbar() {
+  const { t } = useTranslation();
   const groups = useSession((s) => s.groups);
   const activeIndex = useSession((s) => s.activeIndex);
   const applyStrategy = useSession((s) => s.applyStrategy);
@@ -21,18 +14,30 @@ export function ResolutionToolbar() {
   const next = useSession((s) => s.nextConflict);
   const prev = useSession((s) => s.prevConflict);
   const readonly = useSession((s) => s.session?.cli.readonly ?? false);
+  const kb = useSession((s) => effectiveKeybindings(s.prefs.keybindings));
   const [bothOpen, setBothOpen] = useState(false);
 
   const group = groups[activeIndex];
   const disabled = !group || readonly;
 
+  const withKey = (label: string, id: string) =>
+    kb[id] ? `${label} (${formatChord(kb[id])})` : label;
+
   return (
-    <div className="toolbar" role="toolbar" aria-label="Resolution actions">
+    <div className="toolbar" role="toolbar" aria-label={t("toolbar.aria")}>
       <div className="toolbar-group">
-        <button onClick={prev} title="Previous conflict (Alt+Up)" aria-label="Previous conflict">
+        <button
+          onClick={prev}
+          title={withKey(t("tooltip.prev"), "prev")}
+          aria-label={t("toolbar.prev")}
+        >
           ▲
         </button>
-        <button onClick={next} title="Next conflict (Alt+Down)" aria-label="Next conflict">
+        <button
+          onClick={next}
+          title={withKey(t("tooltip.next"), "next")}
+          aria-label={t("toolbar.next")}
+        >
           ▼
         </button>
         <span className="toolbar-counter">
@@ -41,9 +46,9 @@ export function ResolutionToolbar() {
         {group && (
           <span
             className={`badge badge-${group.classification} badge-status-${group.status}`}
-            title={`Status: ${group.status}`}
+            title={t("toolbar.statusTitle", { status: t(`groupStatus.${group.status}`) })}
           >
-            {CLASSIFICATION_LABEL[group.classification] ?? group.classification}
+            {t(`classification.${group.classification}`)}
           </span>
         )}
       </div>
@@ -52,29 +57,29 @@ export function ResolutionToolbar() {
         <button
           disabled={disabled}
           onClick={() => group && applyStrategy(group.id, "current")}
-          title="Accept Current (Alt+1)"
+          title={withKey(t("tooltip.acceptCurrent"), "accept-current")}
         >
-          Accept Current
+          {t("action.acceptCurrent")}
         </button>
         <button
           disabled={disabled}
           onClick={() => group && applyStrategy(group.id, "incoming")}
-          title="Accept Incoming (Alt+2)"
+          title={withKey(t("tooltip.acceptIncoming"), "accept-incoming")}
         >
-          Accept Incoming
+          {t("action.acceptIncoming")}
         </button>
         <div className="dropdown">
           <button
             disabled={disabled}
             onClick={() => group && applyStrategy(group.id, "both-current-first")}
-            title="Accept Both (Alt+3)"
+            title={withKey(t("tooltip.acceptBoth"), "accept-both")}
           >
-            Accept Both
+            {t("action.acceptBoth")}
           </button>
           <button
             className="dropdown-toggle"
             disabled={disabled}
-            aria-label="Both: choose order"
+            aria-label={t("toolbar.bothOrder")}
             onClick={() => setBothOpen((v) => !v)}
           >
             ▾
@@ -87,7 +92,7 @@ export function ResolutionToolbar() {
                   setBothOpen(false);
                 }}
               >
-                Both — Current first
+                {t("action.bothCurrentFirst")}
               </button>
               <button
                 onClick={() => {
@@ -95,7 +100,7 @@ export function ResolutionToolbar() {
                   setBothOpen(false);
                 }}
               >
-                Both — Incoming first
+                {t("action.bothIncomingFirst")}
               </button>
             </div>
           )}
@@ -103,16 +108,16 @@ export function ResolutionToolbar() {
         <button
           disabled={disabled}
           onClick={() => group && applyStrategy(group.id, "base")}
-          title="Accept Base (revert to the common ancestor)"
+          title={t("tooltip.acceptBase")}
         >
-          Accept Base
+          {t("action.acceptBase")}
         </button>
         <button
           disabled={disabled}
           onClick={() => group && applyStrategy(group.id, "none")}
-          title="Reject Both (keep the base content)"
+          title={t("tooltip.rejectBoth")}
         >
-          Reject Both
+          {t("action.rejectBoth")}
         </button>
       </div>
 
@@ -120,16 +125,16 @@ export function ResolutionToolbar() {
         <button
           disabled={disabled || group?.status === "unresolved"}
           onClick={() => group && markReviewed(group.id)}
-          title="Mark as reviewed"
+          title={t("tooltip.markReviewed")}
         >
-          Mark Reviewed
+          {t("action.markReviewed")}
         </button>
         <button
           disabled={disabled || (group ? !isConflicting(group) && !group.resolution : true)}
           onClick={() => group && resetGroup(group.id)}
-          title="Reset this conflict to its initial state"
+          title={t("tooltip.reset")}
         >
-          Reset
+          {t("action.reset")}
         </button>
       </div>
     </div>

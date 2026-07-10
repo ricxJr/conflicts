@@ -1,50 +1,28 @@
 import { useEffect } from "react";
 import { useSession } from "../stores/session";
+import {
+  chordFromEvent,
+  effectiveKeybindings,
+  invertKeybindings,
+  isDispatchableChord,
+} from "./keybindings";
+import { runCommand } from "./commands";
 
-/** Global keyboard shortcuts (RF-021). */
+/** Global keyboard shortcuts (RF-021), driven by the configurable keybindings. */
 export function useShortcuts(): void {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const s = useSession.getState();
-      const group = s.groups[s.activeIndex];
-      const key = e.key.toLowerCase();
 
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "p") {
-        e.preventDefault();
-        s.setPaletteOpen(!s.paletteOpen);
-        return;
-      }
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && key === "s") {
-        e.preventDefault();
-        void s.save(false);
-        return;
-      }
-      if (e.altKey && e.key === "ArrowDown") {
-        e.preventDefault();
-        s.nextConflict();
-        return;
-      }
-      if (e.altKey && e.key === "ArrowUp") {
-        e.preventDefault();
-        s.prevConflict();
-        return;
-      }
-      if (e.altKey && key === "1" && group) {
-        e.preventDefault();
-        s.applyStrategy(group.id, "current");
-        return;
-      }
-      if (e.altKey && key === "2" && group) {
-        e.preventDefault();
-        s.applyStrategy(group.id, "incoming");
-        return;
-      }
-      if (e.altKey && key === "3" && group) {
-        e.preventDefault();
-        s.applyStrategy(group.id, "both-current-first");
-        return;
-      }
+      // Escape closes overlays first. When nothing is open it falls through to
+      // whatever command is bound to Escape (cancel, by default). Monaco stops
+      // propagation when it consumes Escape (find widget, suggestions), so this
+      // handler never sees those cases.
       if (e.key === "Escape") {
+        if (s.settingsOpen) {
+          s.setSettingsOpen(false);
+          return;
+        }
         if (s.paletteOpen) {
           s.setPaletteOpen(false);
           return;
@@ -53,10 +31,20 @@ export function useShortcuts(): void {
           s.setDialog(null);
           return;
         }
-        // Only treat Esc as cancel when the editors are not consuming it
-        // (find widget, suggestions). Monaco stops propagation in that case.
-        s.cancel();
       }
+
+      // While Settings is open, suppress global shortcuts so shortcut capture
+      // and form fields aren't hijacked (capture stops propagation itself).
+      if (s.settingsOpen) return;
+
+      const chord = chordFromEvent(e);
+      if (!isDispatchableChord(chord)) return;
+
+      const commandId = invertKeybindings(effectiveKeybindings(s.prefs.keybindings))[chord];
+      if (!commandId) return;
+
+      e.preventDefault();
+      runCommand(commandId);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);

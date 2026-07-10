@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useSession } from "../stores/session";
 import { applyTheme } from "../editor/monaco";
 import { TopBar } from "../components/layout/TopBar";
@@ -9,11 +10,13 @@ import { BaseViewer } from "../components/diff/BaseViewer";
 import { ResultPanel } from "../components/result/ResultPanel";
 import { ConflictList } from "../components/conflicts/ConflictList";
 import { CommandPalette } from "../components/commands/CommandPalette";
+import { SettingsPanel } from "../components/settings/SettingsPanel";
 import { DialogHost } from "../components/dialogs/DialogHost";
 import { useShortcuts } from "../features/shortcuts";
 import { attachScrollSync } from "../features/scrollSync";
 
 export function App() {
+  const { t } = useTranslation();
   const phase = useSession((s) => s.phase);
   const errorMessage = useSession((s) => s.errorMessage);
   const session = useSession((s) => s.session);
@@ -28,8 +31,8 @@ export function App() {
   }, [init]);
 
   useEffect(() => {
-    applyTheme(prefs.theme);
-  }, [prefs.theme]);
+    applyTheme(prefs);
+  }, [prefs.theme, prefs.customTheme, prefs.uiFontFamily, prefs.uiFontSize]);
 
   // Attach scroll sync after the editors exist.
   useEffect(() => {
@@ -41,7 +44,7 @@ export function App() {
   if (phase === "loading") {
     return (
       <div className="app-message" role="status">
-        Loading merge session…
+        {t("app.loading")}
       </div>
     );
   }
@@ -49,10 +52,10 @@ export function App() {
   if (phase === "error" || !session) {
     return (
       <div className="app-message app-error" role="alert">
-        <h1>MergeScope could not start</h1>
+        <h1>{t("app.startError")}</h1>
         <pre>{errorMessage}</pre>
         <p>
-          Expected usage:{" "}
+          {t("app.expectedUsage")}{" "}
           <code>
             mergescope --base &lt;path&gt; --current &lt;path&gt; --incoming &lt;path&gt; --result
             &lt;path&gt;
@@ -71,7 +74,7 @@ export function App() {
     <div className="top-row">
       <DiffPanel
         side="left"
-        title={`${currentLabel} vs BASE`}
+        title={t("panel.currentVsBase", { label: currentLabel })}
         baseContent={baseContent}
         sideContent={files.current.content}
         fileName={files.result.fileName}
@@ -86,7 +89,7 @@ export function App() {
       )}
       <DiffPanel
         side="right"
-        title={`BASE vs ${incomingLabel}`}
+        title={t("panel.incomingVsBase", { label: incomingLabel })}
         baseContent={baseContent}
         sideContent={files.incoming.content}
         fileName={files.result.fileName}
@@ -110,6 +113,7 @@ export function App() {
       </div>
       <StatusBar />
       <CommandPalette />
+      <SettingsPanel />
       <DialogHost />
     </div>
   );

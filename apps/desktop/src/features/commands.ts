@@ -1,4 +1,6 @@
+import type { TFunction } from "i18next";
 import { useSession } from "../stores/session";
+import { effectiveKeybindings, formatChord } from "./keybindings";
 
 export interface Command {
   id: string;
@@ -7,95 +9,83 @@ export interface Command {
   run(): void;
 }
 
-/** Command registry backing the Command Palette (RF-022). */
-export function getCommands(): Command[] {
+/** Command id + translation key, in Command Palette display order. */
+export const COMMAND_META: { id: string; titleKey: string }[] = [
+  { id: "next", titleKey: "command.next" },
+  { id: "prev", titleKey: "command.prev" },
+  { id: "first", titleKey: "command.first" },
+  { id: "last", titleKey: "command.last" },
+  { id: "accept-current", titleKey: "command.accept-current" },
+  { id: "accept-incoming", titleKey: "command.accept-incoming" },
+  { id: "accept-both", titleKey: "command.accept-both" },
+  { id: "accept-both-incoming", titleKey: "command.accept-both-incoming" },
+  { id: "accept-base", titleKey: "command.accept-base" },
+  { id: "reject-both", titleKey: "command.reject-both" },
+  { id: "reset", titleKey: "command.reset" },
+  { id: "mark-reviewed", titleKey: "command.mark-reviewed" },
+  { id: "toggle-base", titleKey: "command.toggle-base" },
+  { id: "toggle-list", titleKey: "command.toggle-list" },
+  { id: "toggle-changes-only", titleKey: "command.toggle-changes-only" },
+  { id: "toggle-whitespace", titleKey: "command.toggle-whitespace" },
+  { id: "theme-dark", titleKey: "command.theme-dark" },
+  { id: "theme-light", titleKey: "command.theme-light" },
+  { id: "theme-system", titleKey: "command.theme-system" },
+  { id: "theme-hc", titleKey: "command.theme-hc" },
+  { id: "palette", titleKey: "command.palette" },
+  { id: "open-settings", titleKey: "command.open-settings" },
+  { id: "save", titleKey: "command.save" },
+  { id: "save-close", titleKey: "command.save-close" },
+  { id: "cancel", titleKey: "command.cancel" },
+];
+
+/** id -> action, resolved against the current store state on each call. */
+export function getCommandActions(): Record<string, () => void> {
   const s = useSession.getState();
   const group = s.groups[s.activeIndex];
 
-  return [
-    { id: "next", title: "Go to next conflict", shortcut: "Alt+Down", run: () => s.nextConflict() },
-    {
-      id: "prev",
-      title: "Go to previous conflict",
-      shortcut: "Alt+Up",
-      run: () => s.prevConflict(),
-    },
-    { id: "first", title: "Go to first conflict", run: () => s.setActiveIndex(0) },
-    { id: "last", title: "Go to last conflict", run: () => s.setActiveIndex(s.groups.length - 1) },
-    {
-      id: "accept-current",
-      title: "Accept Current",
-      shortcut: "Alt+1",
-      run: () => group && s.applyStrategy(group.id, "current"),
-    },
-    {
-      id: "accept-incoming",
-      title: "Accept Incoming",
-      shortcut: "Alt+2",
-      run: () => group && s.applyStrategy(group.id, "incoming"),
-    },
-    {
-      id: "accept-both",
-      title: "Accept Both (Current first)",
-      shortcut: "Alt+3",
-      run: () => group && s.applyStrategy(group.id, "both-current-first"),
-    },
-    {
-      id: "accept-both-incoming",
-      title: "Accept Both (Incoming first)",
-      run: () => group && s.applyStrategy(group.id, "both-incoming-first"),
-    },
-    {
-      id: "accept-base",
-      title: "Accept Base",
-      run: () => group && s.applyStrategy(group.id, "base"),
-    },
-    {
-      id: "reject-both",
-      title: "Reject Both",
-      run: () => group && s.applyStrategy(group.id, "none"),
-    },
-    { id: "reset", title: "Reset conflict", run: () => group && s.resetGroup(group.id) },
-    {
-      id: "mark-reviewed",
-      title: "Mark conflict as reviewed",
-      run: () => group && s.markReviewed(group.id),
-    },
-    {
-      id: "toggle-base",
-      title: "Toggle base panel",
-      run: () => s.setPrefs({ showBasePanel: !s.prefs.showBasePanel }),
-    },
-    {
-      id: "toggle-list",
-      title: "Toggle conflict list",
-      run: () => s.setPrefs({ showConflictList: !s.prefs.showConflictList }),
-    },
-    {
-      id: "toggle-changes-only",
-      title: "Toggle changes-only view",
-      run: () => s.setPrefs({ hideUnchangedRegions: !s.prefs.hideUnchangedRegions }),
-    },
-    {
-      id: "toggle-whitespace",
-      title: "Toggle ignore whitespace",
-      run: () => s.setPrefs({ ignoreWhitespace: !s.prefs.ignoreWhitespace }),
-    },
-    { id: "theme-dark", title: "Theme: Dark", run: () => s.setPrefs({ theme: "dark" }) },
-    { id: "theme-light", title: "Theme: Light", run: () => s.setPrefs({ theme: "light" }) },
-    { id: "theme-system", title: "Theme: System", run: () => s.setPrefs({ theme: "system" }) },
-    {
-      id: "theme-hc",
-      title: "Theme: High Contrast",
-      run: () => s.setPrefs({ theme: "high-contrast" }),
-    },
-    { id: "save", title: "Save result", shortcut: "Ctrl+S", run: () => void s.save(false) },
-    { id: "save-close", title: "Save result and close", run: () => void s.save(true) },
-    {
-      id: "cancel",
-      title: "Cancel and close (keep conflict pending)",
-      shortcut: "Esc",
-      run: () => s.cancel(),
-    },
-  ];
+  return {
+    next: () => s.nextConflict(),
+    prev: () => s.prevConflict(),
+    first: () => s.setActiveIndex(0),
+    last: () => s.setActiveIndex(s.groups.length - 1),
+    "accept-current": () => group && s.applyStrategy(group.id, "current"),
+    "accept-incoming": () => group && s.applyStrategy(group.id, "incoming"),
+    "accept-both": () => group && s.applyStrategy(group.id, "both-current-first"),
+    "accept-both-incoming": () => group && s.applyStrategy(group.id, "both-incoming-first"),
+    "accept-base": () => group && s.applyStrategy(group.id, "base"),
+    "reject-both": () => group && s.applyStrategy(group.id, "none"),
+    reset: () => group && s.resetGroup(group.id),
+    "mark-reviewed": () => group && s.markReviewed(group.id),
+    "toggle-base": () => s.setPrefs({ showBasePanel: !s.prefs.showBasePanel }),
+    "toggle-list": () => s.setPrefs({ showConflictList: !s.prefs.showConflictList }),
+    "toggle-changes-only": () =>
+      s.setPrefs({ hideUnchangedRegions: !s.prefs.hideUnchangedRegions }),
+    "toggle-whitespace": () => s.setPrefs({ ignoreWhitespace: !s.prefs.ignoreWhitespace }),
+    "theme-dark": () => s.setPrefs({ theme: "dark" }),
+    "theme-light": () => s.setPrefs({ theme: "light" }),
+    "theme-system": () => s.setPrefs({ theme: "system" }),
+    "theme-hc": () => s.setPrefs({ theme: "high-contrast" }),
+    palette: () => s.setPaletteOpen(!s.paletteOpen),
+    "open-settings": () => s.setSettingsOpen(true),
+    save: () => void s.save(false),
+    "save-close": () => void s.save(true),
+    cancel: () => s.cancel(),
+  };
+}
+
+/** Command registry backing the Command Palette (RF-022), localized. */
+export function getCommands(t: TFunction): Command[] {
+  const actions = getCommandActions();
+  const kb = effectiveKeybindings(useSession.getState().prefs.keybindings);
+  return COMMAND_META.map((m) => ({
+    id: m.id,
+    title: t(m.titleKey),
+    shortcut: kb[m.id] ? formatChord(kb[m.id]) : undefined,
+    run: actions[m.id] ?? (() => {}),
+  }));
+}
+
+/** Dispatch a command by id (used by the global shortcut handler). */
+export function runCommand(id: string): void {
+  getCommandActions()[id]?.();
 }

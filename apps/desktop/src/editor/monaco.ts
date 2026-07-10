@@ -41,7 +41,7 @@ monaco.languages.typescript?.javascriptDefaults.setDiagnosticsOptions({
   noSyntaxValidation: false,
 });
 
-export type ThemeName = "dark" | "light" | "system" | "high-contrast";
+import type { CustomTheme, Preferences, ThemeName } from "../types/session";
 
 const sharedRules: monaco.editor.ITokenThemeRule[] = [];
 
@@ -77,7 +77,60 @@ monaco.editor.defineTheme("mergescope-hc", {
   colors: {},
 });
 
+/** Maps custom-theme tokens to the CSS custom properties in global.css. */
+const CSS_VAR_MAP: Partial<Record<keyof CustomTheme, string>> = {
+  bg: "--bg",
+  bgElevated: "--bg-elevated",
+  bgPanelHeader: "--bg-panel-header",
+  border: "--border",
+  text: "--text",
+  textDim: "--text-dim",
+  accent: "--accent",
+  danger: "--danger",
+  ok: "--ok",
+  warn: "--warn",
+  conflict: "--conflict",
+  independent: "--independent",
+  resolved: "--resolved",
+  reviewed: "--reviewed",
+};
+
+function isLight(hex: string): boolean {
+  const h = hex.replace("#", "");
+  if (h.length < 6) return false;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return 0.299 * r + 0.587 * g + 0.114 * b > 140;
+}
+
+function applyCustomCssVars(theme: CustomTheme | null): void {
+  const root = document.documentElement;
+  for (const [token, cssVar] of Object.entries(CSS_VAR_MAP) as [keyof CustomTheme, string][]) {
+    if (theme) root.style.setProperty(cssVar, theme[token]);
+    else root.style.removeProperty(cssVar);
+  }
+}
+
+function defineCustomMonacoTheme(theme: CustomTheme): void {
+  monaco.editor.defineTheme("mergescope-custom", {
+    base: isLight(theme.editorBg) ? "vs" : "vs-dark",
+    inherit: true,
+    rules: sharedRules,
+    colors: {
+      "editor.background": theme.editorBg,
+      "editor.foreground": theme.text,
+      "editor.lineHighlightBackground": theme.bgElevated,
+      "diffEditor.insertedTextBackground": theme.diffInserted + "26",
+      "diffEditor.removedTextBackground": theme.diffRemoved + "26",
+      "diffEditor.insertedLineBackground": theme.diffInserted + "15",
+      "diffEditor.removedLineBackground": theme.diffRemoved + "15",
+    },
+  });
+}
+
 export function resolveMonacoTheme(theme: ThemeName): string {
+  if (theme === "custom") return "mergescope-custom";
   if (theme === "high-contrast") return "mergescope-hc";
   if (theme === "system") {
     const dark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? true;
@@ -86,15 +139,30 @@ export function resolveMonacoTheme(theme: ThemeName): string {
   return theme === "dark" ? "mergescope-dark" : "mergescope-light";
 }
 
-export function applyTheme(theme: ThemeName): void {
-  monaco.editor.setTheme(resolveMonacoTheme(theme));
-  const effective =
-    theme === "system"
-      ? window.matchMedia?.("(prefers-color-scheme: dark)").matches !== false
-        ? "dark"
-        : "light"
-      : theme;
-  document.documentElement.dataset.theme = effective;
+/** Applies theme colors (incl. the user's custom theme) and UI fonts. */
+export function applyTheme(prefs: Preferences): void {
+  const { theme, customTheme } = prefs;
+  if (theme === "custom") {
+    applyCustomCssVars(customTheme);
+    defineCustomMonacoTheme(customTheme);
+    monaco.editor.setTheme("mergescope-custom");
+    document.documentElement.dataset.theme = isLight(customTheme.bg) ? "light" : "dark";
+  } else {
+    applyCustomCssVars(null);
+    monaco.editor.setTheme(resolveMonacoTheme(theme));
+    const effective =
+      theme === "system"
+        ? window.matchMedia?.("(prefers-color-scheme: dark)").matches !== false
+          ? "dark"
+          : "light"
+        : theme;
+    document.documentElement.dataset.theme = effective;
+  }
+
+  const root = document.documentElement;
+  if (prefs.uiFontFamily) root.style.setProperty("--ui-font", prefs.uiFontFamily);
+  else root.style.removeProperty("--ui-font");
+  root.style.setProperty("--ui-font-size", `${prefs.uiFontSize}px`);
 }
 
 export function detectLanguage(fileName: string): string {

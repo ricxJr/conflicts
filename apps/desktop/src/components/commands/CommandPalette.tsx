@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSession } from "../../stores/session";
 import { getCommands } from "../../features/commands";
 
 export function CommandPalette() {
+  const { t, i18n } = useTranslation();
   const open = useSession((s) => s.paletteOpen);
   const setOpen = useSession((s) => s.setPaletteOpen);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const commands = useMemo(() => (open ? getCommands() : []), [open]);
+  const commands = useMemo(() => (open ? getCommands(t) : []), [open, t, i18n.language]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return commands;
@@ -41,13 +43,13 @@ export function CommandPalette() {
       <div
         className="palette"
         role="dialog"
-        aria-label="Command palette"
+        aria-label={t("palette.aria")}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <input
           ref={inputRef}
           value={query}
-          placeholder="Type a command…"
+          placeholder={t("palette.placeholder")}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
@@ -78,7 +80,7 @@ export function CommandPalette() {
               </button>
             </li>
           ))}
-          {filtered.length === 0 && <li className="palette-empty">No matching commands</li>}
+          {filtered.length === 0 && <li className="palette-empty">{t("palette.empty")}</li>}
         </ul>
       </div>
     </div>

@@ -27,6 +27,8 @@ export function ResultPanel() {
   const initialResult = useSession((s) => s.initialResult);
   const session = useSession((s) => s.session);
   const groups = useSession((s) => s.groups);
+  const editorFontFamily = useSession((s) => s.prefs.editorFontFamily);
+  const editorFontSize = useSession((s) => s.prefs.editorFontSize);
   const readonly = session?.cli.readonly ?? false;
 
   // Create the editor once.
@@ -36,7 +38,8 @@ export function ResultPanel() {
       automaticLayout: true,
       minimap: { enabled: true },
       scrollBeyondLastLine: false,
-      fontSize: 13,
+      fontSize: editorFontSize,
+      fontFamily: editorFontFamily || undefined,
       lineNumbersMinChars: 3,
       renderLineHighlight: "all",
       readOnly: readonly,
@@ -54,6 +57,14 @@ export function ResultPanel() {
       editor.dispose();
     };
   }, []);
+
+  // React to editor font preference changes.
+  useEffect(() => {
+    editorRef.current?.updateOptions({
+      fontSize: editorFontSize,
+      fontFamily: editorFontFamily || undefined,
+    });
+  }, [editorFontSize, editorFontFamily]);
 
   // (Re)initialize content and regions whenever the generated result changes.
   useEffect(() => {

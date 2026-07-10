@@ -130,11 +130,26 @@ export async function exitApp(code: number): Promise<void> {
   console.info(`[demo] exit requested with code ${code}`);
 }
 
+/**
+ * Merge stored prefs over the defaults. `customTheme` and `keybindings` are
+ * nested objects, so they need a deep merge — a shallow spread would drop any
+ * token/binding introduced after the settings file was last written.
+ */
+export function mergePreferences(stored: Partial<Preferences> | null): Preferences {
+  const s = stored ?? {};
+  return {
+    ...DEFAULT_PREFERENCES,
+    ...s,
+    customTheme: { ...DEFAULT_PREFERENCES.customTheme, ...(s.customTheme ?? {}) },
+    keybindings: { ...DEFAULT_PREFERENCES.keybindings, ...(s.keybindings ?? {}) },
+  };
+}
+
 export async function getPreferences(): Promise<Preferences> {
   if (isTauri()) {
     try {
       const stored = await invoke<Partial<Preferences> | null>("get_preferences");
-      return { ...DEFAULT_PREFERENCES, ...(stored ?? {}) };
+      return mergePreferences(stored);
     } catch {
       return DEFAULT_PREFERENCES;
     }
