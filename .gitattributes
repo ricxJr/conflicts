@@ -1,3 +1,6 @@
-# Keep fixture bytes exactly as authored (EOL/encoding fidelity matters).
-fixtures/** -text
+# Later rules win: the generic text rule comes first, then the fixture
+# override — fixture bytes (BOM/CRLF) must be stored exactly as authored.
 * text=auto
+fixtures/** -text
+docs/screenshot.png binary
+apps/desktop/src-tauri/icons/** binary
