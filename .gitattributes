@@ -1,6 +1,8 @@
 # Later rules win: the generic text rule comes first, then the fixture
 # override — fixture bytes (BOM/CRLF) must be stored exactly as authored.
-* text=auto
+# eol=lf forces LF on checkout regardless of the runner's core.autocrlf,
+# so Prettier's endOfLine: "lf" holds on Windows CI as well as locally.
+* text=auto eol=lf
 fixtures/** -text
 docs/screenshot.png binary
 apps/desktop/src-tauri/icons/** binary
