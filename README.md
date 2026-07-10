@@ -101,6 +101,49 @@ Diagnostics: `mergescope doctor`. CLI reference: `mergescope --help`.
 
 Client-specific guides: [Git](docs/integrations/git.md) ·
 [Fork](docs/integrations/fork.md) · [GitKraken](docs/integrations/gitkraken.md)
+### Fork (Windows)
+
+1. Open **File → Preferences → Integration** (Git section).
+2. Set **Merge tool** to **Custom**.
+3. Fill in the fields below (adjust the path if MergeScope was installed for a
+   different Windows user):
+
+```text
+Executable:
+C:\Users\<your-user>\AppData\Local\MergeScope\mergescope.exe
+
+Arguments:
+--base "$BASE" --current "$LOCAL" --incoming "$REMOTE" --result "$MERGED" --wait
+```
+
+If you are using a local release build instead of the installer, use
+`apps\desktop\src-tauri\target\release\mergescope.exe` as the executable.
+
+When Fork reports a conflict, right-click the conflicted file and choose
+**Open in External Merge Tool** (the exact label can vary by Fork version).
+Resolve it in MergeScope, select **Save & Close**, then return to Fork and
+stage/mark the file as resolved.
+
+### GitKraken (Windows)
+
+GitKraken does not consistently support arbitrary custom merge-tool
+executables. The reliable setup is to configure MergeScope as Git's global
+merge tool first:
+
+```powershell
+scripts\setup-git-mergetool.ps1 -ExePath "$env:LOCALAPPDATA\MergeScope\mergescope.exe"
+```
+
+Then, when GitKraken reports a conflict:
+
+1. Open GitKraken's built-in terminal for the repository.
+2. Run `git mergetool` (or `git mergetool path/to/file` for one file).
+3. Resolve the conflict in MergeScope and select **Save & Close**.
+4. Return to GitKraken and stage/mark the updated file as resolved.
+
+If your GitKraken version has **Preferences → Git → Merge tool** and
+offers **Use Git's configured tool** (or equivalent), select it after applying
+the global Git configuration above.
 
 ## Keyboard shortcuts
 
