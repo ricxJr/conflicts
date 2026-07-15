@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { monaco, detectLanguage } from "../../editor/monaco";
+import { monaco, detectLanguage, lineNumberGutterChars } from "../../editor/monaco";
 import { useSession } from "../../stores/session";
 
 interface BaseViewerProps {
@@ -28,7 +28,7 @@ export function BaseViewer({ content, fileName, filePath }: BaseViewerProps) {
       scrollBeyondLastLine: false,
       fontSize: editorFontSize,
       fontFamily: editorFontFamily || undefined,
-      lineNumbersMinChars: 3,
+      lineNumbersMinChars: lineNumberGutterChars(model.getLineCount()),
     });
     editorRef.current = editor;
     return () => {

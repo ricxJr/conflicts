@@ -1,30 +1,46 @@
 import { editors } from "../stores/controllers";
+import { useSession } from "../stores/session";
 
 let suppressUntil = 0;
 
 /**
- * Base-anchored scroll sync: both top panels show BASE as their original
- * side, so syncing their original editors keeps logically-equal content
- * aligned even when line numbers diverge on the modified sides (RF-016).
+ * Scroll sync between the two top panels (RF-016).
+ *
+ * With the alignment filler active (see panelAlignment.ts) both panels have
+ * identical row heights everywhere, so mirroring the pixel offset of the
+ * visible (modified) editors is exact in both view modes.
+ *
+ * When unchanged regions are collapsed the filler is disabled and each panel
+ * folds differently; fall back to anchoring on the shared BASE line via the
+ * original editors (side-by-side only — inline hides them).
  */
 export function attachScrollSync(): () => void {
   const disposers: { dispose(): void }[] = [];
 
   const wire = (from: "left" | "right", to: "left" | "right") => {
-    const fromEditor = editors[from]?.getOriginalEditor();
-    if (!fromEditor) return;
+    const fromDiff = editors[from];
+    const source = fromDiff?.getModifiedEditor();
+    if (!fromDiff || !source) return;
     disposers.push(
-      fromEditor.onDidScrollChange((e) => {
+      source.onDidScrollChange((e) => {
         if (!e.scrollTopChanged) return;
         if (performance.now() < suppressUntil) return;
-        const target = editors[to]?.getOriginalEditor();
+        const target = editors[to];
         if (!target) return;
-        const range = fromEditor.getVisibleRanges()[0];
-        if (!range) return;
-        const line = range.startLineNumber;
-        const offsetInLine = fromEditor.getTopForLineNumber(line) - e.scrollTop;
         suppressUntil = performance.now() + 60;
-        target.setScrollTop(target.getTopForLineNumber(line) - offsetInLine);
+
+        const prefs = useSession.getState().prefs;
+        if (prefs.hideUnchangedRegions && !prefs.showConflictList) {
+          const fromOrig = fromDiff.getOriginalEditor();
+          const toOrig = target.getOriginalEditor();
+          const range = fromOrig.getVisibleRanges()[0];
+          if (!range) return;
+          const line = range.startLineNumber;
+          const offsetInLine = fromOrig.getTopForLineNumber(line) - fromOrig.getScrollTop();
+          toOrig.setScrollTop(toOrig.getTopForLineNumber(line) - offsetInLine);
+        } else {
+          target.getModifiedEditor().setScrollTop(e.scrollTop);
+        }
       }),
     );
   };

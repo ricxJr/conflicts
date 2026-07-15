@@ -165,6 +165,15 @@ export function applyTheme(prefs: Preferences): void {
   root.style.setProperty("--ui-font-size", `${prefs.uiFontSize}px`);
 }
 
+/**
+ * Width reserved for the line-number gutter. One char wider than the largest
+ * number so 4+ digit files keep a visible gap between adjacent gutters and
+ * content (RF feedback: 1000+ line files became hard to read).
+ */
+export function lineNumberGutterChars(lineCount: number): number {
+  return Math.max(4, String(Math.max(1, lineCount)).length + 1);
+}
+
 export function detectLanguage(fileName: string): string {
   const dot = fileName.lastIndexOf(".");
   if (dot < 0) return "plaintext";

@@ -14,6 +14,7 @@ import { SettingsPanel } from "../components/settings/SettingsPanel";
 import { DialogHost } from "../components/dialogs/DialogHost";
 import { useShortcuts } from "../features/shortcuts";
 import { attachScrollSync } from "../features/scrollSync";
+import { attachPanelAlignment } from "../features/panelAlignment";
 
 export function App() {
   const { t } = useTranslation();
@@ -34,11 +35,17 @@ export function App() {
     applyTheme(prefs);
   }, [prefs.theme, prefs.customTheme, prefs.uiFontFamily, prefs.uiFontSize]);
 
-  // Attach scroll sync after the editors exist.
+  // Attach scroll sync and cross-panel alignment after the editors exist.
   useEffect(() => {
     if (phase !== "ready") return;
-    const timer = setTimeout(() => attachScrollSync(), 100);
-    return () => clearTimeout(timer);
+    const detach: (() => void)[] = [];
+    const timer = setTimeout(() => {
+      detach.push(attachScrollSync(), attachPanelAlignment());
+    }, 100);
+    return () => {
+      clearTimeout(timer);
+      detach.forEach((d) => d());
+    };
   }, [phase]);
 
   if (phase === "loading") {
@@ -65,16 +72,18 @@ export function App() {
     );
   }
 
-  const { files, cli } = session;
+  const { files, cli, git } = session;
   const baseContent = files.base?.content ?? "";
-  const currentLabel = cli.currentLabel ?? "CURRENT";
-  const incomingLabel = cli.incomingLabel ?? "INCOMING";
+  // Prefer the detected branch name over CLI labels like HEAD/CURRENT.
+  const currentLabel = git?.currentBranch ?? cli.currentLabel ?? "CURRENT";
+  const incomingLabel = git?.incomingBranch ?? cli.incomingLabel ?? "INCOMING";
 
   const topRow = (
     <div className="top-row">
       <DiffPanel
         side="left"
         title={t("panel.currentVsBase", { label: currentLabel })}
+        roleLabel={t("panel.sideCurrent")}
         baseContent={baseContent}
         sideContent={files.current.content}
         fileName={files.result.fileName}
@@ -90,6 +99,7 @@ export function App() {
       <DiffPanel
         side="right"
         title={t("panel.incomingVsBase", { label: incomingLabel })}
+        roleLabel={t("panel.sideIncoming")}
         baseContent={baseContent}
         sideContent={files.incoming.content}
         fileName={files.result.fileName}

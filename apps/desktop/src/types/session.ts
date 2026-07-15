@@ -37,6 +37,10 @@ export interface GitContext {
   worktreeRoot?: string;
   branch?: string;
   operation: GitOperation;
+  /** Branch name of the "ours" side (current/LOCAL), when detectable. */
+  currentBranch?: string;
+  /** Branch name of the "theirs" side (incoming/REMOTE), when detectable. */
+  incomingBranch?: string;
 }
 
 export interface OpenSessionOutput {

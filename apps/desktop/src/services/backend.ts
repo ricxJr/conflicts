@@ -99,7 +99,13 @@ export async function openMergeSession(): Promise<OpenSessionOutput> {
       incoming: demoSnapshot("demo/OrderService_REMOTE.ts", DEMO_INCOMING),
       result: demoSnapshot("demo/OrderService.ts", DEMO_CURRENT),
     },
-    git: { operation: "merge", branch: "feature/discounts", worktreeRoot: "demo" },
+    git: {
+      operation: "merge",
+      branch: "feature/discounts",
+      worktreeRoot: "demo",
+      currentBranch: "feature/discounts",
+      incomingBranch: "feature/credit-limit",
+    },
   };
 }
 

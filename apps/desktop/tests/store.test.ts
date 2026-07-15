@@ -100,6 +100,34 @@ describe("session store", () => {
     expect(after.resolution?.strategy).toBe("manual");
   });
 
+  it("applyStrategyToAll resolves every group from one side", () => {
+    const s = useSession.getState();
+    const controller = editors.result as ReturnType<typeof fakeController>;
+
+    s.applyStrategyToAll("incoming");
+
+    const after = useSession.getState();
+    expect(after.unresolvedCount).toBe(0);
+    expect(after.dirty).toBe(true);
+    expect(after.groups.every((g) => g.status === "resolved")).toBe(true);
+    expect(after.groups.every((g) => g.resolution?.strategy === "incoming")).toBe(true);
+    // Every region got rewritten in the result editor.
+    expect(controller.regions.size).toBe(after.groups.length);
+  });
+
+  it("activateGroupAtBaseLine focuses the group containing the clicked line", () => {
+    const s = useSession.getState();
+    const targetIndex = s.groups.length - 1;
+    const target = s.groups[targetIndex];
+
+    s.activateGroupAtBaseLine(target.baseRange.start, { revealPanels: false });
+    expect(useSession.getState().activeIndex).toBe(targetIndex);
+
+    // Clicks far from any change keep the current selection.
+    s.activateGroupAtBaseLine(9999);
+    expect(useSession.getState().activeIndex).toBe(targetIndex);
+  });
+
   it("markReviewed only applies to already-resolved groups", () => {
     const s = useSession.getState();
     const unresolved = s.groups.find((g) => g.status === "unresolved")!;

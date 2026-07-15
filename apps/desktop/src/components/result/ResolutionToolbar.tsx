@@ -9,6 +9,9 @@ export function ResolutionToolbar() {
   const groups = useSession((s) => s.groups);
   const activeIndex = useSession((s) => s.activeIndex);
   const applyStrategy = useSession((s) => s.applyStrategy);
+  const applyStrategyToAll = useSession((s) => s.applyStrategyToAll);
+  const currentSideLabel = useSession((s) => s.displayCurrentLabel());
+  const incomingSideLabel = useSession((s) => s.displayIncomingLabel());
   const resetGroup = useSession((s) => s.resetGroup);
   const markReviewed = useSession((s) => s.markReviewed);
   const next = useSession((s) => s.nextConflict);
@@ -119,6 +122,23 @@ export function ResolutionToolbar() {
           title={t("tooltip.rejectBoth")}
         >
           {t("action.rejectBoth")}
+        </button>
+      </div>
+
+      <div className="toolbar-group">
+        <button
+          disabled={groups.length === 0 || readonly}
+          onClick={() => applyStrategyToAll("current")}
+          title={t("tooltip.acceptAllCurrent", { label: currentSideLabel })}
+        >
+          {t("action.acceptAllCurrent")}
+        </button>
+        <button
+          disabled={groups.length === 0 || readonly}
+          onClick={() => applyStrategyToAll("incoming")}
+          title={t("tooltip.acceptAllIncoming", { label: incomingSideLabel })}
+        >
+          {t("action.acceptAllIncoming")}
         </button>
       </div>
 
