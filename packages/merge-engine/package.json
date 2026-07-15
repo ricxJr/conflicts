@@ -1,6 +1,6 @@
 {
   "name": "@mergescope/merge-engine",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "MergeScope merge analysis engine: base-anchored diffs, conflict graph, classification and resolutions",
   "type": "module",

@@ -76,7 +76,7 @@ npm run tauri build --workspace @mergescope/desktop   # release exe + NSIS insta
 Artifacts:
 
 - `apps/desktop/src-tauri/target/release/mergescope.exe`
-- `apps/desktop/src-tauri/target/release/bundle/nsis/MergeScope_0.1.0_x64-setup.exe`
+- `apps/desktop/src-tauri/target/release/bundle/nsis/MergeScope_1.0.0_x64-setup.exe`
 
 For UI development without Rust: `npm run dev` opens a browser demo session
 with representative conflict data.
