@@ -20,9 +20,11 @@ export function App() {
   const { t } = useTranslation();
   const phase = useSession((s) => s.phase);
   const errorMessage = useSession((s) => s.errorMessage);
+  const noConflictPath = useSession((s) => s.noConflictPath);
   const session = useSession((s) => s.session);
   const prefs = useSession((s) => s.prefs);
   const setPrefs = useSession((s) => s.setPrefs);
+  const setSettingsOpen = useSession((s) => s.setSettingsOpen);
   const init = useSession((s) => s.init);
 
   useShortcuts();
@@ -52,6 +54,34 @@ export function App() {
     return (
       <div className="app-message" role="status">
         {t("app.loading")}
+      </div>
+    );
+  }
+
+  // Settings-only mode: launched without files (or via --file on a file
+  // without conflicts). Only preferences are available.
+  if (phase === "settings") {
+    return (
+      <div className="app">
+        <div className="app-message settings-mode" role="main">
+          <h1>{t("app.settingsMode.title")}</h1>
+          <p className="settings-mode-desc">{t("app.settingsMode.description")}</p>
+          {noConflictPath && (
+            <p className="settings-mode-notice" role="status">
+              {t("app.settingsMode.noConflict", { file: noConflictPath })}
+            </p>
+          )}
+          <button className="btn-primary" onClick={() => setSettingsOpen(true)}>
+            {t("app.settingsMode.openSettings")}
+          </button>
+          <p className="settings-mode-hint">
+            {t("app.settingsMode.hint")}{" "}
+            <code>
+              mergescope --current &lt;path&gt; --incoming &lt;path&gt; --result &lt;path&gt;
+            </code>
+          </p>
+        </div>
+        <SettingsPanel />
       </div>
     );
   }

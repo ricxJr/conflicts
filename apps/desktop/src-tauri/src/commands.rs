@@ -12,18 +12,25 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
 
 pub struct AppState {
-    pub cli: CliArgs,
+    /// None in settings-only mode (launched without a merge session).
+    pub cli: Option<CliArgs>,
+    /// Set when a `--file` launch pointed at a file without conflict markers;
+    /// the UI then opens in settings mode and explains why.
+    pub no_conflict_path: Option<String>,
     pub exit_code: AtomicI32,
     pub result_meta: Mutex<Option<WriteMeta>>,
     pub result_trailing_newline: Mutex<bool>,
 }
 
 impl AppState {
-    pub fn new(cli: CliArgs) -> Self {
+    pub fn new(cli: Option<CliArgs>, no_conflict_path: Option<String>) -> Self {
+        // Until a successful save happens, closing a merge means "canceled".
+        // Settings mode has nothing to cancel, so it exits cleanly.
+        let initial_exit = if cli.is_some() { 1 } else { 0 };
         Self {
             cli,
-            // Until a successful save happens, closing means "canceled".
-            exit_code: AtomicI32::new(1),
+            no_conflict_path,
+            exit_code: AtomicI32::new(initial_exit),
             result_meta: Mutex::new(None),
             result_trailing_newline: Mutex::new(true),
         }
@@ -59,6 +66,7 @@ pub struct CliContextDto {
     incoming_label: Option<String>,
     readonly: bool,
     no_backup: bool,
+    single_file: bool,
 }
 
 #[derive(Serialize)]
@@ -84,9 +92,36 @@ pub struct SaveResultOutput {
     hash: String,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LaunchContextDto {
+    mode: &'static str,
+    no_conflict_path: Option<String>,
+}
+
+/// Tells the frontend how MergeScope was launched, before any file is read.
+#[tauri::command]
+pub fn get_launch_context(state: State<AppState>) -> LaunchContextDto {
+    match &state.cli {
+        Some(_) => LaunchContextDto {
+            mode: "merge",
+            no_conflict_path: None,
+        },
+        None => LaunchContextDto {
+            mode: "settings",
+            no_conflict_path: state.no_conflict_path.clone(),
+        },
+    }
+}
+
 #[tauri::command]
 pub fn open_merge_session(state: State<AppState>) -> Result<OpenSessionOutput, BackendError> {
-    let cli = &state.cli;
+    let cli = state.cli.as_ref().ok_or_else(|| {
+        BackendError::new(
+            "invalid-session",
+            "MergeScope was started without a merge session",
+        )
+    })?;
 
     let base = match &cli.base {
         Some(path) => Some(
@@ -125,6 +160,7 @@ pub fn open_merge_session(state: State<AppState>) -> Result<OpenSessionOutput, B
             incoming_label: cli.incoming_label.clone(),
             readonly: cli.readonly,
             no_backup: cli.no_backup,
+            single_file: cli.single_file,
         },
         files: SessionFilesDto {
             base,
@@ -143,7 +179,13 @@ pub fn save_merge_result(
     expected_hash: String,
     allow_overwrite: bool,
 ) -> Result<SaveResultOutput, BackendError> {
-    if state.cli.readonly {
+    let cli = state.cli.as_ref().ok_or_else(|| {
+        BackendError::new(
+            "invalid-session",
+            "MergeScope was started without a merge session",
+        )
+    })?;
+    if cli.readonly {
         return Err(BackendError::new(
             "write-error",
             "session was opened in readonly mode",
@@ -151,8 +193,8 @@ pub fn save_merge_result(
     }
 
     // RF-020/§22.3: detect external modification before replacing.
-    let disk_hash = files::hash_file(&state.cli.result)
-        .map_err(|e| BackendError::new("read-error", e))?;
+    let disk_hash =
+        files::hash_file(&cli.result).map_err(|e| BackendError::new("read-error", e))?;
     if disk_hash != expected_hash && !allow_overwrite {
         logging::error("save blocked: result changed externally");
         return Err(BackendError::new(
@@ -177,8 +219,8 @@ pub fn save_merge_result(
     }
 
     let bytes = encoding::encode(&normalized, meta.encoding, meta.write_eol);
-    let create_backup = !state.cli.no_backup && backup_preference_enabled();
-    writer::atomic_write(&state.cli.result, &bytes, create_backup)
+    let create_backup = !cli.no_backup && backup_preference_enabled();
+    writer::atomic_write(&cli.result, &bytes, create_backup)
         .map_err(|e| BackendError::new("write-error", e))?;
 
     let new_hash = files::hash_bytes(&bytes);

@@ -221,6 +221,38 @@ input[type="number"] {
   white-space: pre-wrap;
 }
 
+/* Settings-only mode (launched without a merge session) */
+.settings-mode {
+  gap: 14px;
+  text-align: center;
+  padding: 0 24px;
+}
+
+.settings-mode h1 {
+  color: var(--text);
+  font-size: 22px;
+}
+
+.settings-mode-desc {
+  max-width: 62ch;
+}
+
+.settings-mode-notice {
+  color: var(--warn);
+  max-width: 70ch;
+}
+
+.settings-mode-hint {
+  font-size: 12px;
+}
+
+.settings-mode-hint code {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+}
+
 /* Top bar */
 .topbar {
   display: flex;

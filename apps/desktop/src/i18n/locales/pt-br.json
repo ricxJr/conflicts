@@ -2,7 +2,17 @@
   "app": {
     "loading": "Carregando sessão de merge…",
     "startError": "O MergeScope não pôde iniciar",
-    "expectedUsage": "Uso esperado:"
+    "expectedUsage": "Uso esperado:",
+    "settingsMode": {
+      "title": "Modo de configuração",
+      "description": "O MergeScope foi aberto sem uma sessão de merge. Ajuste tema, cores, idioma e atalhos — tudo fica salvo para o próximo merge.",
+      "noConflict": "\"{{file}}\" não contém marcadores de conflito, então não há nada para resolver.",
+      "openSettings": "Abrir configurações",
+      "hint": "Para resolver um conflito, execute:"
+    },
+    "singleFile": {
+      "noMarkers": "\"{{file}}\" não contém marcadores de conflito."
+    }
   },
   "panel": {
     "currentVsBase": "{{label}} vs BASE",

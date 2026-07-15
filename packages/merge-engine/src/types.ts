@@ -111,3 +111,13 @@ export interface ConflictMarkerParseResult {
   regions: ConflictMarkerRegion[];
   diagnostics: string[];
 }
+
+/** Merge inputs rebuilt from a conflicted file's markers (single-file mode). */
+export interface ReconstructedSides {
+  baseLines: string[];
+  currentLines: string[];
+  incomingLines: string[];
+  /** Labels taken from the first region's markers (e.g. HEAD / branch name). */
+  currentLabel?: string;
+  incomingLabel?: string;
+}

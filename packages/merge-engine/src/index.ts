@@ -19,7 +19,7 @@ export {
   strategyLabel,
   type MarkerLabels,
 } from "./resolve";
-export { parseConflictMarkers, hasConflictMarkers } from "./markers";
+export { parseConflictMarkers, hasConflictMarkers, reconstructSides } from "./markers";
 
 export interface AnalyzeOptions extends LineDiffOptions {
   /** Apply safe automatic resolutions (single-sided, same-change, independent). */

@@ -29,6 +29,21 @@ export interface CliContext {
   incomingLabel?: string;
   readonly: boolean;
   noBackup: boolean;
+  /**
+   * True for `--file <path>` launches (Explorer context menu / "Open with"):
+   * current/incoming/result all point at the same conflicted file and the
+   * sides are rebuilt from its conflict markers.
+   */
+  singleFile?: boolean;
+}
+
+export type LaunchMode = "merge" | "settings";
+
+/** How MergeScope was launched — decides the screen before any file is read. */
+export interface LaunchContext {
+  mode: LaunchMode;
+  /** Set when a --file launch pointed at a file without conflict markers. */
+  noConflictPath?: string;
 }
 
 export type GitOperation = "merge" | "rebase" | "cherry-pick" | "unknown";

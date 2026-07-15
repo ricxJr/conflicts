@@ -65,6 +65,33 @@ pub fn read_snapshot(path: &Path) -> Result<(FileSnapshot, WriteMeta, DecodedFil
     Ok((snapshot, meta, decoded))
 }
 
+/// Startup check for `--file` launches: true when the file contains both a
+/// conflict start (`<<<<<<<`) and end (`>>>>>>>`) marker at a line start,
+/// mirroring the frontend marker parser (exactly 7 chars, optional label).
+pub fn has_conflict_markers(path: &Path) -> Result<bool, String> {
+    let bytes = std::fs::read(path)
+        .map_err(|e| format!("cannot read '{}': {e}", path.display()))?;
+    let text = String::from_utf8_lossy(&bytes);
+    let mut has_start = false;
+    let mut has_end = false;
+    for line in text.lines() {
+        has_start = has_start || is_marker_line(line, "<<<<<<<");
+        has_end = has_end || is_marker_line(line, ">>>>>>>");
+        if has_start && has_end {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn is_marker_line(line: &str, marker: &str) -> bool {
+    match line.strip_prefix(marker) {
+        Some("") => true,
+        Some(rest) => rest.starts_with(' ') || rest.starts_with('\t'),
+        None => false,
+    }
+}
+
 /// RF-002: validates inputs before the UI starts. Returns a user-facing error.
 pub fn validate_inputs(
     base: Option<&Path>,
@@ -126,6 +153,25 @@ mod tests {
         assert_eq!(snap.size_bytes, 14);
         assert_eq!(snap.hash.len(), 64);
         std::fs::remove_file(path).ok();
+    }
+
+    #[test]
+    fn detects_conflict_markers() {
+        let conflicted = temp_file(
+            "conflicted.txt",
+            b"a\n<<<<<<< HEAD\nx\n=======\ny\n>>>>>>> feature/x\nb\n",
+        );
+        assert!(has_conflict_markers(&conflicted).unwrap());
+
+        let clean = temp_file("clean.txt", b"a\nb\n<<<<<<<< not a marker\n");
+        assert!(!has_conflict_markers(&clean).unwrap());
+
+        let start_only = temp_file("start-only.txt", b"<<<<<<< HEAD\nx\n");
+        assert!(!has_conflict_markers(&start_only).unwrap());
+
+        for path in [conflicted, clean, start_only] {
+            std::fs::remove_file(path).ok();
+        }
     }
 
     #[test]

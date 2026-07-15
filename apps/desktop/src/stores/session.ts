@@ -5,6 +5,8 @@ import {
   hasConflictMarkers,
   isConflicting,
   joinLines,
+  normalizeEol,
+  reconstructSides,
   resolutionOutput,
   splitLines,
   type BuildResultOutput,
@@ -19,7 +21,7 @@ import * as backend from "../services/backend";
 import { editors, revealBaseLine } from "./controllers";
 import i18n from "../i18n";
 
-export type Phase = "loading" | "ready" | "error";
+export type Phase = "loading" | "ready" | "settings" | "error";
 
 export interface RevealOptions {
   /** Scroll the top diff panels to the group's base line (default true). */
@@ -40,6 +42,8 @@ export interface DialogState {
 interface SessionStore {
   phase: Phase;
   errorMessage?: string;
+  /** Settings mode via --file: the file that turned out to have no conflict. */
+  noConflictPath?: string;
   session?: OpenSessionOutput;
   analysis?: MergeAnalysis;
   initialResult?: BuildResultOutput;
@@ -103,11 +107,28 @@ export const useSession = create<SessionStore>((set, get) => ({
 
   async init() {
     try {
-      const [prefs, session] = await Promise.all([
+      const [prefs, launch] = await Promise.all([
         backend.getPreferences(),
-        backend.openMergeSession(),
+        backend.getLaunchContext(),
       ]);
       void i18n.changeLanguage(prefs.language);
+
+      // Settings-only mode: no files to merge, open straight into the
+      // preferences so theme/language/etc. can be adjusted and persisted.
+      if (launch.mode === "settings") {
+        set({
+          phase: "settings",
+          prefs,
+          settingsOpen: true,
+          noConflictPath: launch.noConflictPath,
+        });
+        return;
+      }
+
+      let session = await backend.openMergeSession();
+      if (session.cli.singleFile) {
+        session = expandSingleFileSession(session);
+      }
       const analysis = analyzeMerge(
         session.files.base?.content,
         session.files.current.content,
@@ -403,6 +424,36 @@ export const useSession = create<SessionStore>((set, get) => ({
     set({ initialResult: rebuilt, dirty: true });
   },
 }));
+
+/**
+ * Single-file launches (context menu / --file) read one conflicted file; the
+ * three merge inputs are rebuilt from its markers so the regular pipeline and
+ * panels work unchanged. Marker labels double as CLI labels when absent, and
+ * the result keeps pointing at the same file so saving writes back in place.
+ */
+export function expandSingleFileSession(session: OpenSessionOutput): OpenSessionOutput {
+  const result = session.files.result;
+  const { lines } = splitLines(normalizeEol(result.content));
+  const sides = reconstructSides(lines);
+  if (!sides) {
+    throw i18n.t("app.singleFile.noMarkers", { file: result.path });
+  }
+  const trailing = result.trailingNewline;
+  return {
+    ...session,
+    cli: {
+      ...session.cli,
+      currentLabel: session.cli.currentLabel ?? sides.currentLabel,
+      incomingLabel: session.cli.incomingLabel ?? sides.incomingLabel,
+    },
+    files: {
+      base: { ...result, content: joinLines(sides.baseLines, trailing) },
+      current: { ...result, content: joinLines(sides.currentLines, trailing) },
+      incoming: { ...result, content: joinLines(sides.incomingLines, trailing) },
+      result,
+    },
+  };
+}
 
 /** Serialization helper used on save paths that need the file's original EOL flags. */
 export function textStats(text: string): { lineCount: number; hasMarkers: boolean } {
