@@ -14,14 +14,17 @@ import { SettingsPanel } from "../components/settings/SettingsPanel";
 import { DialogHost } from "../components/dialogs/DialogHost";
 import { useShortcuts } from "../features/shortcuts";
 import { attachScrollSync } from "../features/scrollSync";
+import { attachPanelAlignment } from "../features/panelAlignment";
 
 export function App() {
   const { t } = useTranslation();
   const phase = useSession((s) => s.phase);
   const errorMessage = useSession((s) => s.errorMessage);
+  const noConflictPath = useSession((s) => s.noConflictPath);
   const session = useSession((s) => s.session);
   const prefs = useSession((s) => s.prefs);
   const setPrefs = useSession((s) => s.setPrefs);
+  const setSettingsOpen = useSession((s) => s.setSettingsOpen);
   const init = useSession((s) => s.init);
 
   useShortcuts();
@@ -34,17 +37,51 @@ export function App() {
     applyTheme(prefs);
   }, [prefs.theme, prefs.customTheme, prefs.uiFontFamily, prefs.uiFontSize]);
 
-  // Attach scroll sync after the editors exist.
+  // Attach scroll sync and cross-panel alignment after the editors exist.
   useEffect(() => {
     if (phase !== "ready") return;
-    const timer = setTimeout(() => attachScrollSync(), 100);
-    return () => clearTimeout(timer);
+    const detach: (() => void)[] = [];
+    const timer = setTimeout(() => {
+      detach.push(attachScrollSync(), attachPanelAlignment());
+    }, 100);
+    return () => {
+      clearTimeout(timer);
+      detach.forEach((d) => d());
+    };
   }, [phase]);
 
   if (phase === "loading") {
     return (
       <div className="app-message" role="status">
         {t("app.loading")}
+      </div>
+    );
+  }
+
+  // Settings-only mode: launched without files (or via --file on a file
+  // without conflicts). Only preferences are available.
+  if (phase === "settings") {
+    return (
+      <div className="app">
+        <div className="app-message settings-mode" role="main">
+          <h1>{t("app.settingsMode.title")}</h1>
+          <p className="settings-mode-desc">{t("app.settingsMode.description")}</p>
+          {noConflictPath && (
+            <p className="settings-mode-notice" role="status">
+              {t("app.settingsMode.noConflict", { file: noConflictPath })}
+            </p>
+          )}
+          <button className="btn-primary" onClick={() => setSettingsOpen(true)}>
+            {t("app.settingsMode.openSettings")}
+          </button>
+          <p className="settings-mode-hint">
+            {t("app.settingsMode.hint")}{" "}
+            <code>
+              mergescope --current &lt;path&gt; --incoming &lt;path&gt; --result &lt;path&gt;
+            </code>
+          </p>
+        </div>
+        <SettingsPanel />
       </div>
     );
   }
@@ -65,16 +102,18 @@ export function App() {
     );
   }
 
-  const { files, cli } = session;
+  const { files, cli, git } = session;
   const baseContent = files.base?.content ?? "";
-  const currentLabel = cli.currentLabel ?? "CURRENT";
-  const incomingLabel = cli.incomingLabel ?? "INCOMING";
+  // Prefer the detected branch name over CLI labels like HEAD/CURRENT.
+  const currentLabel = git?.currentBranch ?? cli.currentLabel ?? "CURRENT";
+  const incomingLabel = git?.incomingBranch ?? cli.incomingLabel ?? "INCOMING";
 
   const topRow = (
     <div className="top-row">
       <DiffPanel
         side="left"
         title={t("panel.currentVsBase", { label: currentLabel })}
+        roleLabel={t("panel.sideCurrent")}
         baseContent={baseContent}
         sideContent={files.current.content}
         fileName={files.result.fileName}
@@ -90,6 +129,7 @@ export function App() {
       <DiffPanel
         side="right"
         title={t("panel.incomingVsBase", { label: incomingLabel })}
+        roleLabel={t("panel.sideIncoming")}
         baseContent={baseContent}
         sideContent={files.incoming.content}
         fileName={files.result.fileName}

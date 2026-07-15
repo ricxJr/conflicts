@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { monaco, detectLanguage } from "../../editor/monaco";
+import { monaco, detectLanguage, lineNumberGutterChars } from "../../editor/monaco";
 import { editors, type ResultController } from "../../stores/controllers";
 import { useSession } from "../../stores/session";
 import { ResolutionToolbar } from "./ResolutionToolbar";
@@ -51,8 +51,27 @@ export function ResultPanel() {
       useSession.getState().setCursor(e.position.lineNumber, e.position.column);
     });
 
+    // Clicking inside a region makes it the active conflict (no scrolling —
+    // the user is already exactly where they want to be).
+    const clickSub = editor.onMouseDown((e) => {
+      const line = e.target.position?.lineNumber;
+      if (!line) return;
+      const state = useSession.getState();
+      for (const [groupId, info] of regionsRef.current) {
+        if (info.collapsedAtLine !== null) continue;
+        const span = controller.getRegionSpan(groupId);
+        if (!span || line < span.startLine || line >= span.endLine) continue;
+        const index = state.groups.findIndex((g) => g.id === groupId);
+        if (index >= 0 && index !== state.activeIndex) {
+          state.setActiveIndex(index, { revealPanels: true, revealResult: false });
+        }
+        break;
+      }
+    });
+
     return () => {
       cursorSub.dispose();
+      clickSub.dispose();
       if (editors.resultEditor === editor) delete editors.resultEditor;
       editor.dispose();
     };
@@ -81,6 +100,7 @@ export function ResultPanel() {
     editor.setModel(model);
     previous?.dispose();
     suppressRef.current--;
+    editor.updateOptions({ lineNumbersMinChars: lineNumberGutterChars(model.getLineCount()) });
 
     // Build one tracked decoration per region.
     const map = new Map<string, RegionInfo>();

@@ -2,11 +2,23 @@
   "app": {
     "loading": "Carregando sessão de merge…",
     "startError": "O MergeScope não pôde iniciar",
-    "expectedUsage": "Uso esperado:"
+    "expectedUsage": "Uso esperado:",
+    "settingsMode": {
+      "title": "Modo de configuração",
+      "description": "O MergeScope foi aberto sem uma sessão de merge. Ajuste tema, cores, idioma e atalhos — tudo fica salvo para o próximo merge.",
+      "noConflict": "\"{{file}}\" não contém marcadores de conflito, então não há nada para resolver.",
+      "openSettings": "Abrir configurações",
+      "hint": "Para resolver um conflito, execute:"
+    },
+    "singleFile": {
+      "noMarkers": "\"{{file}}\" não contém marcadores de conflito."
+    }
   },
   "panel": {
     "currentVsBase": "{{label}} vs BASE",
     "incomingVsBase": "BASE vs {{label}}",
+    "sideCurrent": "Atual",
+    "sideIncoming": "Recebido",
     "baseAria": "Base (ancestral comum)",
     "mergedResult": "Resultado do merge"
   },
@@ -75,6 +87,8 @@
     "bothIncomingFirst": "Ambos — Recebido primeiro",
     "acceptBase": "Aceitar Base",
     "rejectBoth": "Rejeitar Ambos",
+    "acceptAllCurrent": "Tudo do Atual",
+    "acceptAllIncoming": "Tudo do Recebido",
     "markReviewed": "Marcar revisado",
     "reset": "Redefinir",
     "save": "Salvar",
@@ -89,6 +103,8 @@
     "acceptBoth": "Aceitar Ambos",
     "acceptBase": "Aceitar Base (voltar ao ancestral comum)",
     "rejectBoth": "Rejeitar Ambos (manter o conteúdo da base)",
+    "acceptAllCurrent": "Aceitar todas as alterações do arquivo do lado Atual ({{label}})",
+    "acceptAllIncoming": "Aceitar todas as alterações do arquivo do lado Recebido ({{label}})",
     "markReviewed": "Marcar como revisado",
     "reset": "Redefinir este conflito para o estado inicial",
     "cancel": "Cancelar — código de saída 1",
@@ -142,6 +158,8 @@
     "accept-both-incoming": "Aceitar Ambos (Recebido primeiro)",
     "accept-base": "Aceitar Base",
     "reject-both": "Rejeitar Ambos",
+    "accept-all-current": "Aceitar tudo do Atual (arquivo inteiro)",
+    "accept-all-incoming": "Aceitar tudo do Recebido (arquivo inteiro)",
     "reset": "Redefinir conflito",
     "mark-reviewed": "Marcar conflito como revisado",
     "toggle-base": "Alternar painel base",

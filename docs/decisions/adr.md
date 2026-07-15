@@ -80,3 +80,21 @@ this preserves the user's partial work without lying to Git.
 per-user mode.
 **Rationale:** MSVC is the supported Tauri target on Windows; per-user install
 avoids elevation and matches the "developer tool" profile.
+
+## ADR-011 — Cross-panel alignment via arithmetic view zones
+
+**Decision:** keep the two top panels vertically aligned by inserting hatched
+filler view zones (`.msr-align-filler`) after each change cluster, sized so
+both panels consume the same number of rows. Filler rows are derived
+arithmetically from each diff editor's own `getLineChanges()` (union-merged
+into base-interval clusters), never from pixel measurement and never from the
+merge engine's hunks. Scroll sync then simply mirrors `scrollTop` between the
+visible (modified) editors. Alignment is disabled while "changes only"
+(hidden unchanged regions) is active, where per-panel folding makes row math
+meaningless; scroll sync falls back to base-line anchoring there.
+**Rationale:** using Monaco's own diff keeps the filler consistent with what
+is rendered (including the ignore-whitespace toggle); arithmetic zones are
+font-size independent (`heightInLines`) and avoid measure/re-layout feedback
+loops. The math differs per view mode: side by side only the insertion excess
+adds rows; the inline view stacks removed + added rows, so every modified
+line counts (see `features/diffGeometry.ts`, unit-tested).

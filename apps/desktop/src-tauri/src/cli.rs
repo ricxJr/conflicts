@@ -39,6 +39,10 @@ pub struct CliArgs {
     pub current: PathBuf,
     pub incoming: PathBuf,
     pub result: PathBuf,
+    /// True for `--file <path>` launches (Explorer context menu / "Open with"):
+    /// current/incoming/result all point at the same conflicted file and the
+    /// frontend rebuilds the sides from its conflict markers.
+    pub single_file: bool,
     pub repo: Option<PathBuf>,
     pub title: Option<String>,
     pub current_label: Option<String>,
@@ -54,6 +58,9 @@ pub struct CliArgs {
 #[derive(Debug)]
 pub enum CliCommand {
     Merge(Box<CliArgs>),
+    /// Settings-only mode: no merge session, just preferences (theme,
+    /// language, shortcuts). Entered with zero arguments or `--settings`.
+    Settings,
     Doctor,
     Help,
     Version,
@@ -63,14 +70,22 @@ pub const USAGE: &str = "MergeScope — visual Git merge conflict resolution
 
 USAGE:
   mergescope --current <path> --incoming <path> --result <path> [--base <path>] [options]
+  mergescope --file <path> | <path>
+  mergescope [--settings]
   mergescope doctor
   mergescope --help | --version
+
+Launched with no arguments (or --settings), MergeScope opens in settings-only
+mode so theme, colors, language and shortcuts can be adjusted without a merge.
 
 ARGUMENTS:
   --base <path>            Common ancestor file (optional)
   --current <path>         Current side file (alias: --local)
   --incoming <path>        Incoming side file (alias: --remote)
   --result <path>          Output file (alias: --merged)
+  --file <path>            Single file containing conflict markers; the sides
+                           are rebuilt from the markers and the resolution is
+                           written back to the same file
 
 OPTIONS:
   --repo <path>            Explicit repository/worktree path
@@ -101,11 +116,15 @@ pub fn parse(args: &[String]) -> Result<CliCommand, String> {
     if args.first().map(String::as_str) == Some("doctor") {
         return Ok(CliCommand::Doctor);
     }
+    if args.is_empty() || args.iter().any(|a| a == "--settings") {
+        return Ok(CliCommand::Settings);
+    }
 
     let mut base = None;
     let mut current = None;
     let mut incoming = None;
     let mut result = None;
+    let mut file: Option<PathBuf> = None;
     let mut repo = None;
     let mut title = None;
     let mut current_label = None;
@@ -130,6 +149,7 @@ pub fn parse(args: &[String]) -> Result<CliCommand, String> {
             "--current" | "--local" => current = Some(PathBuf::from(take_value(arg)?)),
             "--incoming" | "--remote" => incoming = Some(PathBuf::from(take_value(arg)?)),
             "--result" | "--merged" => result = Some(PathBuf::from(take_value(arg)?)),
+            "--file" => file = Some(PathBuf::from(take_value("--file")?)),
             "--repo" => repo = Some(PathBuf::from(take_value("--repo")?)),
             "--title" => title = Some(take_value("--title")?),
             "--current-label" => current_label = Some(take_value("--current-label")?),
@@ -138,9 +158,37 @@ pub fn parse(args: &[String]) -> Result<CliCommand, String> {
             "--wait" => wait = true,
             "--no-backup" => no_backup = true,
             "--log-level" => log_level = LogLevel::parse(&take_value("--log-level")?)?,
+            // A bare path (Explorer "Open with" / drag onto the exe) behaves
+            // like --file.
+            other if !other.starts_with('-') && file.is_none() => {
+                file = Some(PathBuf::from(other));
+            }
             other => return Err(format!("unknown argument '{other}'")),
         }
         i += 1;
+    }
+
+    if let Some(file) = file {
+        if base.is_some() || current.is_some() || incoming.is_some() || result.is_some() {
+            return Err(
+                "--file cannot be combined with --base/--current/--incoming/--result".into(),
+            );
+        }
+        return Ok(CliCommand::Merge(Box::new(CliArgs {
+            base: None,
+            current: file.clone(),
+            incoming: file.clone(),
+            result: file,
+            single_file: true,
+            repo,
+            title,
+            current_label,
+            incoming_label,
+            readonly,
+            wait,
+            no_backup,
+            log_level,
+        })));
     }
 
     let current = current.ok_or("missing required argument --current (or --local)")?;
@@ -152,6 +200,7 @@ pub fn parse(args: &[String]) -> Result<CliCommand, String> {
         current,
         incoming,
         result,
+        single_file: false,
         repo,
         title,
         current_label,
@@ -227,6 +276,57 @@ mod tests {
         assert!(matches!(parse(&v(&["doctor"])).unwrap(), CliCommand::Doctor));
         assert!(matches!(parse(&v(&["--help"])).unwrap(), CliCommand::Help));
         assert!(matches!(parse(&v(&["--version"])).unwrap(), CliCommand::Version));
+    }
+
+    #[test]
+    fn no_arguments_opens_settings_mode() {
+        assert!(matches!(parse(&[]).unwrap(), CliCommand::Settings));
+        assert!(matches!(
+            parse(&v(&["--settings"])).unwrap(),
+            CliCommand::Settings
+        ));
+    }
+
+    #[test]
+    fn parses_single_file_mode() {
+        let cmd = parse(&v(&["--file", "conflicted.txt"])).unwrap();
+        match cmd {
+            CliCommand::Merge(args) => {
+                assert!(args.single_file);
+                assert!(args.base.is_none());
+                assert_eq!(args.current.to_str().unwrap(), "conflicted.txt");
+                assert_eq!(args.incoming.to_str().unwrap(), "conflicted.txt");
+                assert_eq!(args.result.to_str().unwrap(), "conflicted.txt");
+            }
+            other => panic!("expected merge, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn bare_path_behaves_like_file() {
+        let cmd = parse(&v(&["conflicted.txt"])).unwrap();
+        match cmd {
+            CliCommand::Merge(args) => {
+                assert!(args.single_file);
+                assert_eq!(args.result.to_str().unwrap(), "conflicted.txt");
+            }
+            other => panic!("expected merge, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn four_file_mode_is_not_single_file() {
+        let cmd = parse(&v(&["--local", "c", "--remote", "i", "--merged", "r"])).unwrap();
+        match cmd {
+            CliCommand::Merge(args) => assert!(!args.single_file),
+            other => panic!("expected merge, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejects_file_combined_with_merge_arguments() {
+        assert!(parse(&v(&["--file", "f.txt", "--current", "c.txt"])).is_err());
+        assert!(parse(&v(&["f.txt", "g.txt"])).is_err());
     }
 
     #[test]

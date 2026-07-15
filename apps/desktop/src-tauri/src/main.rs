@@ -45,7 +45,10 @@ fn main() {
         }
     };
 
-    let args = match command {
+    // `cli_args` is None in settings-only mode: launched without a merge
+    // session, or via --file on a file without conflict markers (the path is
+    // then kept so the UI can explain why nothing opened).
+    let (cli_args, no_conflict_path) = match command {
         CliCommand::Help => {
             println!("{}", cli::USAGE);
             std::process::exit(0);
@@ -57,28 +60,51 @@ fn main() {
         CliCommand::Doctor => {
             std::process::exit(doctor::run());
         }
-        CliCommand::Merge(args) => *args,
+        CliCommand::Settings => {
+            logging::init(cli::LogLevel::Warn);
+            (None, None)
+        }
+        CliCommand::Merge(args) => {
+            let args = *args;
+            logging::init(args.log_level);
+
+            // RF-002: fail fast, never touch the result file on startup errors.
+            if let Err(message) = files::validate_inputs(
+                args.base.as_deref(),
+                &args.current,
+                &args.incoming,
+                &args.result,
+            ) {
+                eprintln!("mergescope: {message}");
+                logging::error("startup validation failed");
+                std::process::exit(exit_codes::READ_FAILURE);
+            }
+
+            if args.single_file {
+                match files::has_conflict_markers(&args.result) {
+                    Ok(true) => (Some(args), None),
+                    Ok(false) => {
+                        logging::info("single-file launch without conflict markers");
+                        (None, Some(args.result.display().to_string()))
+                    }
+                    Err(message) => {
+                        eprintln!("mergescope: {message}");
+                        logging::error("startup marker check failed");
+                        std::process::exit(exit_codes::READ_FAILURE);
+                    }
+                }
+            } else {
+                (Some(args), None)
+            }
+        }
     };
 
-    logging::init(args.log_level);
-
-    // RF-002: fail fast, never touch the result file on startup errors.
-    if let Err(message) = files::validate_inputs(
-        args.base.as_deref(),
-        &args.current,
-        &args.incoming,
-        &args.result,
-    ) {
-        eprintln!("mergescope: {message}");
-        logging::error("startup validation failed");
-        std::process::exit(exit_codes::READ_FAILURE);
-    }
-
-    let state = AppState::new(args.clone());
+    let state = AppState::new(cli_args.clone(), no_conflict_path);
 
     let app = tauri::Builder::default()
         .manage(state)
         .invoke_handler(tauri::generate_handler![
+            commands::get_launch_context,
             commands::open_merge_session,
             commands::save_merge_result,
             commands::set_exit_code,
@@ -87,7 +113,9 @@ fn main() {
             commands::save_preferences,
         ])
         .setup(move |app| {
-            commands::apply_window_title(&app.handle().clone(), &args);
+            if let Some(args) = &cli_args {
+                commands::apply_window_title(&app.handle().clone(), args);
+            }
             Ok(())
         })
         .build(tauri::generate_context!())

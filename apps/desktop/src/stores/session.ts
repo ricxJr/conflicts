@@ -5,6 +5,8 @@ import {
   hasConflictMarkers,
   isConflicting,
   joinLines,
+  normalizeEol,
+  reconstructSides,
   resolutionOutput,
   splitLines,
   type BuildResultOutput,
@@ -19,7 +21,14 @@ import * as backend from "../services/backend";
 import { editors, revealBaseLine } from "./controllers";
 import i18n from "../i18n";
 
-export type Phase = "loading" | "ready" | "error";
+export type Phase = "loading" | "ready" | "settings" | "error";
+
+export interface RevealOptions {
+  /** Scroll the top diff panels to the group's base line (default true). */
+  revealPanels?: boolean;
+  /** Scroll/position the result editor on the group's region (default true). */
+  revealResult?: boolean;
+}
 
 export interface DialogState {
   kind: "confirm-cancel" | "confirm-save-unresolved" | "external-change" | "info";
@@ -33,6 +42,8 @@ export interface DialogState {
 interface SessionStore {
   phase: Phase;
   errorMessage?: string;
+  /** Settings mode via --file: the file that turned out to have no conflict. */
+  noConflictPath?: string;
   session?: OpenSessionOutput;
   analysis?: MergeAnalysis;
   initialResult?: BuildResultOutput;
@@ -51,10 +62,14 @@ interface SessionStore {
   init(): Promise<void>;
   currentLabel(): string;
   incomingLabel(): string;
+  displayCurrentLabel(): string;
+  displayIncomingLabel(): string;
   applyStrategy(groupId: string, strategy: ResolutionStrategy): void;
+  applyStrategyToAll(strategy: "current" | "incoming"): void;
   resetGroup(groupId: string): void;
   markReviewed(groupId: string): void;
-  setActiveIndex(index: number): void;
+  setActiveIndex(index: number, opts?: RevealOptions): void;
+  activateGroupAtBaseLine(baseLine: number, opts?: RevealOptions): void;
   nextConflict(): void;
   prevConflict(): void;
   onRegionsEdited(changedGroupIds: string[]): void;
@@ -92,11 +107,28 @@ export const useSession = create<SessionStore>((set, get) => ({
 
   async init() {
     try {
-      const [prefs, session] = await Promise.all([
+      const [prefs, launch] = await Promise.all([
         backend.getPreferences(),
-        backend.openMergeSession(),
+        backend.getLaunchContext(),
       ]);
       void i18n.changeLanguage(prefs.language);
+
+      // Settings-only mode: no files to merge, open straight into the
+      // preferences so theme/language/etc. can be adjusted and persisted.
+      if (launch.mode === "settings") {
+        set({
+          phase: "settings",
+          prefs,
+          settingsOpen: true,
+          noConflictPath: launch.noConflictPath,
+        });
+        return;
+      }
+
+      let session = await backend.openMergeSession();
+      if (session.cli.singleFile) {
+        session = expandSingleFileSession(session);
+      }
       const analysis = analyzeMerge(
         session.files.base?.content,
         session.files.current.content,
@@ -136,6 +168,15 @@ export const useSession = create<SessionStore>((set, get) => ({
     return get().session?.cli.incomingLabel ?? "INCOMING";
   },
 
+  // Marker labels above keep whatever the CLI passed (git semantics); for the
+  // UI the detected branch name is far more recognizable than HEAD/CURRENT.
+  displayCurrentLabel() {
+    return get().session?.git?.currentBranch ?? get().currentLabel();
+  },
+  displayIncomingLabel() {
+    return get().session?.git?.incomingBranch ?? get().incomingLabel();
+  },
+
   applyStrategy(groupId, strategy) {
     const { analysis, groups } = get();
     const group = groups.find((g) => g.id === groupId);
@@ -150,6 +191,21 @@ export const useSession = create<SessionStore>((set, get) => ({
       dirty: true,
     });
     set((s) => ({ unresolvedCount: countUnresolved(s.groups) }));
+  },
+
+  applyStrategyToAll(strategy) {
+    const { analysis, groups } = get();
+    if (!analysis || groups.length === 0) return;
+
+    // One resolution object per group so later edits don't share timestamps.
+    const resolved = groups.map((group) => {
+      const resolution = makeResolution(strategy);
+      const lines = resolutionOutput(analysis.baseLines, group, resolution);
+      editors.result?.replaceRegion(group.id, lines);
+      return { ...group, status: "resolved" as const, resolution };
+    });
+
+    set({ groups: resolved, dirty: true, unresolvedCount: 0 });
   },
 
   resetGroup(groupId) {
@@ -198,14 +254,38 @@ export const useSession = create<SessionStore>((set, get) => ({
     }));
   },
 
-  setActiveIndex(index) {
+  setActiveIndex(index, opts) {
     const { groups } = get();
     if (groups.length === 0) return;
     const clamped = ((index % groups.length) + groups.length) % groups.length;
     set({ activeIndex: clamped });
     const group = groups[clamped];
-    revealBaseLine(group.baseRange.start);
-    editors.result?.revealGroup(group.id);
+    if (opts?.revealPanels !== false) revealBaseLine(group.baseRange.start);
+    if (opts?.revealResult !== false) editors.result?.revealGroup(group.id);
+  },
+
+  activateGroupAtBaseLine(baseLine, opts) {
+    const { groups, activeIndex } = get();
+    // Nearest group within one line of the click; covers insertion points,
+    // whose clicked side lines map to the base line just before the range.
+    let best = -1;
+    let bestDist = 2;
+    groups.forEach((group, i) => {
+      const { start, end } = group.baseRange;
+      const dist =
+        end > start
+          ? baseLine < start
+            ? start - baseLine
+            : baseLine >= end
+              ? baseLine - end + 1
+              : 0
+          : Math.abs(baseLine - start);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    });
+    if (best >= 0 && best !== activeIndex) get().setActiveIndex(best, opts);
   },
 
   nextConflict() {
@@ -344,6 +424,36 @@ export const useSession = create<SessionStore>((set, get) => ({
     set({ initialResult: rebuilt, dirty: true });
   },
 }));
+
+/**
+ * Single-file launches (context menu / --file) read one conflicted file; the
+ * three merge inputs are rebuilt from its markers so the regular pipeline and
+ * panels work unchanged. Marker labels double as CLI labels when absent, and
+ * the result keeps pointing at the same file so saving writes back in place.
+ */
+export function expandSingleFileSession(session: OpenSessionOutput): OpenSessionOutput {
+  const result = session.files.result;
+  const { lines } = splitLines(normalizeEol(result.content));
+  const sides = reconstructSides(lines);
+  if (!sides) {
+    throw i18n.t("app.singleFile.noMarkers", { file: result.path });
+  }
+  const trailing = result.trailingNewline;
+  return {
+    ...session,
+    cli: {
+      ...session.cli,
+      currentLabel: session.cli.currentLabel ?? sides.currentLabel,
+      incomingLabel: session.cli.incomingLabel ?? sides.incomingLabel,
+    },
+    files: {
+      base: { ...result, content: joinLines(sides.baseLines, trailing) },
+      current: { ...result, content: joinLines(sides.currentLines, trailing) },
+      incoming: { ...result, content: joinLines(sides.incomingLines, trailing) },
+      result,
+    },
+  };
+}
 
 /** Serialization helper used on save paths that need the file's original EOL flags. */
 export function textStats(text: string): { lineCount: number; hasMarkers: boolean } {

@@ -3,7 +3,12 @@
  * When running in a plain browser (vite dev / vitest), falls back to an
  * in-memory demo session so the UI can be exercised standalone.
  */
-import type { OpenSessionOutput, Preferences, SaveResultOutput } from "../types/session";
+import type {
+  LaunchContext,
+  OpenSessionOutput,
+  Preferences,
+  SaveResultOutput,
+} from "../types/session";
 import { DEFAULT_PREFERENCES } from "../types/session";
 
 function isTauri(): boolean {
@@ -68,6 +73,49 @@ export function retry(times: number) {
 }
 `;
 
+/** Demo file for `?mode=single-file`: one file with standard conflict markers. */
+const DEMO_CONFLICTED = `import { Order } from "./order";
+
+export function processOrder(order: Order) {
+  validateOrder(order);
+<<<<<<< HEAD
+  applyDiscount(order);
+  calculateTotal(order);
+=======
+  calculateTotal(order);
+  validateCreditLimit(order);
+>>>>>>> feature/credit-limit
+  saveOrder(order);
+}
+
+<<<<<<< HEAD
+const timeout = 5000;
+=======
+const requestTimeout = 3000;
+>>>>>>> feature/credit-limit
+
+export function retry(times: number) {
+  for (let i = 0; i < times; i++) {
+    attempt(i);
+  }
+}
+`;
+
+/** Browser-only knob so demo mode can exercise the non-merge launch paths. */
+function demoModeParam(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("mode");
+}
+
+export async function getLaunchContext(): Promise<LaunchContext> {
+  if (isTauri()) return invoke<LaunchContext>("get_launch_context");
+  if (demoModeParam() === "settings") {
+    const file = new URLSearchParams(window.location.search).get("file");
+    return { mode: "settings", noConflictPath: file ?? undefined };
+  }
+  return { mode: "merge" };
+}
+
 function demoSnapshot(path: string, content: string) {
   return {
     path,
@@ -84,6 +132,25 @@ function demoSnapshot(path: string, content: string) {
 
 export async function openMergeSession(): Promise<OpenSessionOutput> {
   if (isTauri()) return invoke<OpenSessionOutput>("open_merge_session");
+  if (demoModeParam() === "single-file") {
+    const path = "demo/OrderService.ts";
+    const snapshot = demoSnapshot(path, DEMO_CONFLICTED);
+    return {
+      cli: {
+        currentPath: path,
+        incomingPath: path,
+        resultPath: path,
+        readonly: false,
+        noBackup: true,
+        singleFile: true,
+      },
+      files: {
+        current: snapshot,
+        incoming: snapshot,
+        result: snapshot,
+      },
+    };
+  }
   return {
     cli: {
       currentPath: "demo/OrderService_LOCAL.ts",
@@ -99,7 +166,13 @@ export async function openMergeSession(): Promise<OpenSessionOutput> {
       incoming: demoSnapshot("demo/OrderService_REMOTE.ts", DEMO_INCOMING),
       result: demoSnapshot("demo/OrderService.ts", DEMO_CURRENT),
     },
-    git: { operation: "merge", branch: "feature/discounts", worktreeRoot: "demo" },
+    git: {
+      operation: "merge",
+      branch: "feature/discounts",
+      worktreeRoot: "demo",
+      currentBranch: "feature/discounts",
+      incomingBranch: "feature/credit-limit",
+    },
   };
 }
 

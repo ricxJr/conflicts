@@ -50,12 +50,16 @@ monaco.editor.defineTheme("mergescope-dark", {
   inherit: true,
   rules: sharedRules,
   colors: {
-    "editor.background": "#16181d",
-    "editor.lineHighlightBackground": "#1e2128",
-    "diffEditor.insertedTextBackground": "#2ea04326",
-    "diffEditor.removedTextBackground": "#f8514926",
-    "diffEditor.insertedLineBackground": "#2ea04315",
-    "diffEditor.removedLineBackground": "#f8514915",
+    "editor.background": "#111c44",
+    "editor.lineHighlightBackground": "#1b2a5e",
+    "editorLineNumber.foreground": "#5b6796",
+    "editorGutter.background": "#111c44",
+    "scrollbarSlider.background": "#9aa8c733",
+    "scrollbarSlider.hoverBackground": "#9aa8c755",
+    "diffEditor.insertedTextBackground": "#01b57426",
+    "diffEditor.removedTextBackground": "#f53c5b26",
+    "diffEditor.insertedLineBackground": "#01b57415",
+    "diffEditor.removedLineBackground": "#f53c5b15",
   },
 });
 
@@ -65,8 +69,9 @@ monaco.editor.defineTheme("mergescope-light", {
   rules: sharedRules,
   colors: {
     "editor.background": "#ffffff",
-    "diffEditor.insertedTextBackground": "#2ea04333",
-    "diffEditor.removedTextBackground": "#f8514933",
+    "editorLineNumber.foreground": "#a3aed0",
+    "diffEditor.insertedTextBackground": "#01b57433",
+    "diffEditor.removedTextBackground": "#e31a1a33",
   },
 });
 
@@ -163,6 +168,15 @@ export function applyTheme(prefs: Preferences): void {
   if (prefs.uiFontFamily) root.style.setProperty("--ui-font", prefs.uiFontFamily);
   else root.style.removeProperty("--ui-font");
   root.style.setProperty("--ui-font-size", `${prefs.uiFontSize}px`);
+}
+
+/**
+ * Width reserved for the line-number gutter. One char wider than the largest
+ * number so 4+ digit files keep a visible gap between adjacent gutters and
+ * content (RF feedback: 1000+ line files became hard to read).
+ */
+export function lineNumberGutterChars(lineCount: number): number {
+  return Math.max(4, String(Math.max(1, lineCount)).length + 1);
 }
 
 export function detectLanguage(fileName: string): string {

@@ -20,8 +20,12 @@ external merge tools.
 
 ## Highlights
 
-- Two independent diffs anchored on the common ancestor, with base-anchored
-  scroll sync between panels.
+- Two independent diffs anchored on the common ancestor, kept vertically in
+  sync: hatched filler blocks (TortoiseGit-style) pad each panel where the
+  other side inserted lines, so equal base content sits at equal heights, and
+  scrolling mirrors between panels.
+- Each panel is titled with the detected branch name of its side (`ours` /
+  `theirs` for merge, rebase and cherry-pick) instead of `HEAD`/`CURRENT`.
 - Conflict graph with classification per group: `current-only`,
   `incoming-only`, `independent`, `same-change`, `overlapping`,
   `delete-modify`.
@@ -29,8 +33,11 @@ external merge tools.
   flagged for review; real conflicts stay as marker blocks — nothing is picked
   silently.
 - Resolution actions: Accept Current / Incoming / Both (either order) / Base /
-  Reject, plus free manual editing of the result with undo/redo, search and
-  syntax highlighting.
+  Reject — plus **All from Current / All from Incoming** to take every change
+  in the file from one side — and free manual editing of the result with
+  undo/redo, search and syntax highlighting.
+- Click any change in the diff panels (or a region in the result) to focus
+  that conflict; the resolution actions then target it.
 - Conflict list sidebar, keyboard navigation, Command Palette
   (`Ctrl+Shift+P`), and a Settings panel (`Ctrl+,`).
 - Fully customizable: interface language (English / Português-BR), UI and editor
@@ -69,7 +76,7 @@ npm run tauri build --workspace @mergescope/desktop   # release exe + NSIS insta
 Artifacts:
 
 - `apps/desktop/src-tauri/target/release/mergescope.exe`
-- `apps/desktop/src-tauri/target/release/bundle/nsis/MergeScope_0.1.0_x64-setup.exe`
+- `apps/desktop/src-tauri/target/release/bundle/nsis/MergeScope_1.0.0_x64-setup.exe`
 
 For UI development without Rust: `npm run dev` opens a browser demo session
 with representative conflict data.

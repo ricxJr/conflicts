@@ -29,6 +29,21 @@ export interface CliContext {
   incomingLabel?: string;
   readonly: boolean;
   noBackup: boolean;
+  /**
+   * True for `--file <path>` launches (Explorer context menu / "Open with"):
+   * current/incoming/result all point at the same conflicted file and the
+   * sides are rebuilt from its conflict markers.
+   */
+  singleFile?: boolean;
+}
+
+export type LaunchMode = "merge" | "settings";
+
+/** How MergeScope was launched — decides the screen before any file is read. */
+export interface LaunchContext {
+  mode: LaunchMode;
+  /** Set when a --file launch pointed at a file without conflict markers. */
+  noConflictPath?: string;
 }
 
 export type GitOperation = "merge" | "rebase" | "cherry-pick" | "unknown";
@@ -37,6 +52,10 @@ export interface GitContext {
   worktreeRoot?: string;
   branch?: string;
   operation: GitOperation;
+  /** Branch name of the "ours" side (current/LOCAL), when detectable. */
+  currentBranch?: string;
+  /** Branch name of the "theirs" side (incoming/REMOTE), when detectable. */
+  incomingBranch?: string;
 }
 
 export interface OpenSessionOutput {
@@ -86,23 +105,23 @@ export interface CustomTheme {
 
 /** Seed for the custom theme = the built-in dark palette (global.css / monaco.ts). */
 export const DEFAULT_CUSTOM_THEME: CustomTheme = {
-  bg: "#16181d",
-  bgElevated: "#1e2128",
-  bgPanelHeader: "#20242c",
-  border: "#2c313a",
-  text: "#d7dce3",
-  textDim: "#8b93a1",
-  accent: "#4d9fff",
-  danger: "#f85149",
-  ok: "#2ea043",
-  warn: "#d29922",
-  conflict: "#f85149",
-  independent: "#a371f7",
-  resolved: "#2ea043",
-  reviewed: "#58a6ff",
-  diffInserted: "#2ea043",
-  diffRemoved: "#f85149",
-  editorBg: "#16181d",
+  bg: "#0b1029",
+  bgElevated: "#111c44",
+  bgPanelHeader: "#182452",
+  border: "#2a3564",
+  text: "#e9edf7",
+  textDim: "#9aa8c7",
+  accent: "#7a5cff",
+  danger: "#f53c5b",
+  ok: "#01b574",
+  warn: "#ffb547",
+  conflict: "#f53c5b",
+  independent: "#b982ff",
+  resolved: "#01b574",
+  reviewed: "#2d8cff",
+  diffInserted: "#01b574",
+  diffRemoved: "#f53c5b",
+  editorBg: "#111c44",
 };
 
 export interface Preferences {
