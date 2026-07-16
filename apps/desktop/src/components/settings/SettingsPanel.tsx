@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSession } from "../../stores/session";
 import { DEFAULT_CUSTOM_THEME } from "../../types/session";
-import type { CustomTheme, Language, ThemeName } from "../../types/session";
+import type { CustomTheme, Language, ThemeName, WindowStartMode } from "../../types/session";
 import { LANGUAGES } from "../../i18n";
 import { COMMAND_META } from "../../features/commands";
 import {
@@ -11,11 +11,14 @@ import {
   formatChord,
   isDispatchableChord,
 } from "../../features/keybindings";
+import { Select } from "../common/Select";
+import { Combobox } from "../common/Combobox";
 
 type Tab = "appearance" | "font" | "language" | "shortcuts";
 
 const TABS: Tab[] = ["appearance", "font", "language", "shortcuts"];
 const THEMES: ThemeName[] = ["dark", "light", "system", "high-contrast", "custom"];
+const WINDOW_MODES: WindowStartMode[] = ["default", "maximized", "fullscreen"];
 const COLOR_TOKENS: (keyof CustomTheme)[] = [
   "bg",
   "bgElevated",
@@ -110,17 +113,12 @@ export function SettingsPanel() {
             <>
               <div className="settings-row">
                 <label htmlFor="theme-select">{t("settings.theme")}</label>
-                <select
+                <Select
                   id="theme-select"
                   value={prefs.theme}
-                  onChange={(e) => setPrefs({ theme: e.target.value as ThemeName })}
-                >
-                  {THEMES.map((th) => (
-                    <option key={th} value={th}>
-                      {t(`theme.${th}`)}
-                    </option>
-                  ))}
-                </select>
+                  options={THEMES.map((th) => ({ value: th, label: t(`theme.${th}`) }))}
+                  onChange={(value) => setPrefs({ theme: value as ThemeName })}
+                />
               </div>
 
               {prefs.theme === "custom" && (
@@ -155,25 +153,48 @@ export function SettingsPanel() {
                   </div>
                 </>
               )}
+
+              <div className="settings-subhead">
+                <span>{t("settings.editor")}</span>
+              </div>
+              <label className="settings-row settings-check">
+                <input
+                  type="checkbox"
+                  checked={prefs.showResultMinimap}
+                  onChange={(e) => setPrefs({ showResultMinimap: e.target.checked })}
+                />
+                <span>{t("settings.resultMinimap")}</span>
+              </label>
+
+              <div className="settings-subhead">
+                <span>{t("settings.window")}</span>
+              </div>
+              <div className="settings-row">
+                <label htmlFor="window-mode-select">{t("settings.windowMode")}</label>
+                <Select
+                  id="window-mode-select"
+                  value={prefs.windowStartMode}
+                  options={WINDOW_MODES.map((mode) => ({
+                    value: mode,
+                    label: t(`settings.windowModeOption.${mode}`),
+                  }))}
+                  onChange={(value) => setPrefs({ windowStartMode: value as WindowStartMode })}
+                />
+              </div>
+              <p className="settings-hint">{t(`settings.windowModeHint.${prefs.windowStartMode}`)}</p>
             </>
           )}
 
           {tab === "font" && (
             <>
-              <datalist id="font-suggestions">
-                {COMMON_FONTS.map((f) => (
-                  <option key={f} value={f} />
-                ))}
-              </datalist>
               <div className="settings-row">
                 <label htmlFor="ui-font">{t("settings.font.uiFamily")}</label>
-                <input
+                <Combobox
                   id="ui-font"
-                  type="text"
-                  list="font-suggestions"
+                  options={COMMON_FONTS}
                   placeholder={t("settings.font.familyPlaceholder")}
                   value={prefs.uiFontFamily}
-                  onChange={(e) => setPrefs({ uiFontFamily: e.target.value })}
+                  onChange={(value) => setPrefs({ uiFontFamily: value })}
                 />
               </div>
               <div className="settings-row">
@@ -189,13 +210,12 @@ export function SettingsPanel() {
               </div>
               <div className="settings-row">
                 <label htmlFor="editor-font">{t("settings.font.editorFamily")}</label>
-                <input
+                <Combobox
                   id="editor-font"
-                  type="text"
-                  list="font-suggestions"
+                  options={COMMON_FONTS}
                   placeholder={t("settings.font.familyPlaceholder")}
                   value={prefs.editorFontFamily}
-                  onChange={(e) => setPrefs({ editorFontFamily: e.target.value })}
+                  onChange={(value) => setPrefs({ editorFontFamily: value })}
                 />
               </div>
               <div className="settings-row">
@@ -215,17 +235,12 @@ export function SettingsPanel() {
           {tab === "language" && (
             <div className="settings-row">
               <label htmlFor="lang-select">{t("settings.language")}</label>
-              <select
+              <Select
                 id="lang-select"
                 value={prefs.language}
-                onChange={(e) => setPrefs({ language: e.target.value as Language })}
-              >
-                {LANGUAGES.map((lng) => (
-                  <option key={lng} value={lng}>
-                    {t(`language.${lng}`)}
-                  </option>
-                ))}
-              </select>
+                options={LANGUAGES.map((lng) => ({ value: lng, label: t(`language.${lng}`) }))}
+                onChange={(value) => setPrefs({ language: value as Language })}
+              />
             </div>
           )}
 

@@ -29,6 +29,7 @@ export function ResultPanel() {
   const groups = useSession((s) => s.groups);
   const editorFontFamily = useSession((s) => s.prefs.editorFontFamily);
   const editorFontSize = useSession((s) => s.prefs.editorFontSize);
+  const showResultMinimap = useSession((s) => s.prefs.showResultMinimap);
   const readonly = session?.cli.readonly ?? false;
 
   // Create the editor once.
@@ -36,7 +37,7 @@ export function ResultPanel() {
     if (!containerRef.current) return;
     const editor = monaco.editor.create(containerRef.current, {
       automaticLayout: true,
-      minimap: { enabled: true },
+      minimap: { enabled: showResultMinimap },
       scrollBeyondLastLine: false,
       fontSize: editorFontSize,
       fontFamily: editorFontFamily || undefined,
@@ -84,6 +85,11 @@ export function ResultPanel() {
       fontFamily: editorFontFamily || undefined,
     });
   }, [editorFontSize, editorFontFamily]);
+
+  // React to minimap preference changes.
+  useEffect(() => {
+    editorRef.current?.updateOptions({ minimap: { enabled: showResultMinimap } });
+  }, [showResultMinimap]);
 
   // (Re)initialize content and regions whenever the generated result changes.
   useEffect(() => {

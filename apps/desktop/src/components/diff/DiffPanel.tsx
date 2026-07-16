@@ -4,12 +4,12 @@ import { monaco, detectLanguage, lineNumberGutterChars } from "../../editor/mona
 import { editors } from "../../stores/controllers";
 import { useSession } from "../../stores/session";
 import { modifiedLineToBase } from "../../features/diffGeometry";
-import { openExternal } from "../../services/backend";
 import type { CommitInfo } from "../../types/session";
 
 interface DiffPanelProps {
   side: "left" | "right";
-  title: string;
+  /** Branch/label of this side, shown compared against BASE in the header. */
+  branchLabel: string;
   /** Small badge naming the side's role (Current/Incoming). */
   roleLabel: string;
   baseContent: string;
@@ -18,8 +18,6 @@ interface DiffPanelProps {
   filePath: string;
   /** Commit backing this side, when git could resolve it. */
   commit?: CommitInfo;
-  /** Web URL to open the commit, when the remote host is recognized. */
-  commitHref?: string | null;
 }
 
 /** Ignore clicks on scrollbars/rulers; anything with a position is fair game. */
@@ -33,16 +31,16 @@ function isNavigableTarget(target: monaco.editor.IMouseTarget): boolean {
 /** Read-only Monaco diff editor: original = BASE, modified = CURRENT/INCOMING. */
 export function DiffPanel({
   side,
-  title,
+  branchLabel,
   roleLabel,
   baseContent,
   sideContent,
   fileName,
   filePath,
   commit,
-  commitHref,
 }: DiffPanelProps) {
   const { t } = useTranslation();
+  const openCommitDiff = useSession((s) => s.openCommitDiff);
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(null);
   const hideUnchanged = useSession((s) => s.prefs.hideUnchangedRegions);
@@ -129,30 +127,31 @@ export function DiffPanel({
     ? t("panel.commit.tooltip", { sha: commit.sha, subject: commit.subject })
     : undefined;
 
+  const compareAria = t("panel.comparedToBase", { role: roleLabel, label: branchLabel });
+
   return (
-    <section className="panel diff-panel" aria-label={title}>
+    <section className="panel diff-panel" aria-label={compareAria}>
       <header className="panel-header">
         <div className="panel-header-main">
-          <span className="panel-title panel-branch" title={title}>
-            {title}
-          </span>
           <span className={`badge badge-side badge-side-${side}`}>{roleLabel}</span>
-          {commit &&
-            (commitHref ? (
-              <button
-                type="button"
-                className="commit-link"
-                onClick={() => void openExternal(commitHref)}
-                title={commitTooltip}
-                aria-label={t("panel.commit.openCommit", { sha: commit.shortSha })}
-              >
-                {commitBody}
-              </button>
-            ) : (
-              <span className="panel-commit" title={commitTooltip}>
-                {commitBody}
-              </span>
-            ))}
+          <span className="panel-compare" title={compareAria}>
+            <span className={`compare-branch compare-branch-${side}`}>{branchLabel}</span>
+            <span className="compare-vs" aria-hidden>
+              ⟷
+            </span>
+            <span className="compare-base">{t("panel.baseLabel")}</span>
+          </span>
+          {commit && (
+            <button
+              type="button"
+              className="commit-link"
+              onClick={() => openCommitDiff(commit, side)}
+              title={commitTooltip}
+              aria-label={t("panel.commit.openCommit", { sha: commit.shortSha })}
+            >
+              {commitBody}
+            </button>
+          )}
         </div>
         <span className="panel-path" title={filePath}>
           {filePath}

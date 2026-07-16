@@ -14,18 +14,30 @@
       "noMarkers": "\"{{file}}\" não contém marcadores de conflito."
     }
   },
+  "marker": {
+    "current": "ATUAL",
+    "incoming": "RECEBIDO"
+  },
   "panel": {
     "currentVsBase": "{{label}} vs BASE",
     "incomingVsBase": "BASE vs {{label}}",
     "sideCurrent": "Atual",
     "sideIncoming": "Recebido",
+    "baseLabel": "BASE",
+    "comparedToBase": "{{role}}: {{label}} comparado à BASE",
     "baseAria": "Base (ancestral comum)",
     "mergedResult": "Resultado do merge",
     "commit": {
       "authoredBy": "por {{author}}",
-      "openCommit": "Abrir o commit {{sha}} no navegador",
+      "openCommit": "Ver o diff do commit {{sha}}",
+      "openCommitBrowser": "Abrir o commit {{sha}} no navegador",
       "tooltip": "{{sha}}\n{{subject}}"
     }
+  },
+  "commitDiff": {
+    "title": "Diff do commit {{sha}}",
+    "loading": "Carregando o diff do commit…",
+    "error": "Não foi possível carregar o diff: {{message}}"
   },
   "topbar": {
     "resolved": "{{resolved}}/{{total}} resolvidos",
@@ -191,6 +203,20 @@
       "shortcuts": "Atalhos"
     },
     "theme": "Tema",
+    "editor": "Editor",
+    "resultMinimap": "Mostrar minimapa no editor do resultado",
+    "window": "Janela",
+    "windowMode": "Abrir janela como",
+    "windowModeOption": {
+      "default": "Padrão",
+      "maximized": "Tela cheia",
+      "fullscreen": "FullScreen"
+    },
+    "windowModeHint": {
+      "default": "A janela reabre na última posição e tamanho.",
+      "maximized": "A janela ocupa toda a tela, mantendo a barra de título.",
+      "fullscreen": "Tela cheia real, sem bordas nem barra de título."
+    },
     "customColors": "Cores personalizadas",
     "restoreDefaults": "Restaurar padrões",
     "color": {

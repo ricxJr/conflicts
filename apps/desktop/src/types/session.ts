@@ -90,6 +90,15 @@ export interface SaveResultOutput {
   hash: string;
 }
 
+/** File content on both sides of a single commit (parent → commit). */
+export interface CommitDiffOutput {
+  /** File as it stood at the commit's parent; empty for a root/new file. */
+  before: string;
+  /** File as it stood at the commit itself. */
+  after: string;
+  fileName: string;
+}
+
 export interface BackendError {
   code: "external-change" | "read-error" | "write-error" | "invalid-session" | "internal";
   message: string;
@@ -97,6 +106,13 @@ export interface BackendError {
 
 export type ThemeName = "dark" | "light" | "system" | "high-contrast" | "custom";
 export type Language = "en" | "pt-br";
+/**
+ * How the app window opens:
+ * - "default": restore the last size/position (window-state plugin);
+ * - "maximized": fill the work area, keeping the title bar (tela cheia);
+ * - "fullscreen": true OS fullscreen with no window chrome.
+ */
+export type WindowStartMode = "default" | "maximized" | "fullscreen";
 
 /** Every color token the UI and editors expose for the "custom" theme. */
 export interface CustomTheme {
@@ -158,9 +174,14 @@ export interface Preferences {
   conflictListCollapsed: boolean;
   hideUnchangedRegions: boolean;
   ignoreWhitespace: boolean;
+  showResultMinimap: boolean;
   createBackup: boolean;
   topPanelRatio: number;
   resultPanelRatio: number;
+  /** Horizontal split between the Current panel and the rest of the diff row. */
+  diffSplitRatio: number;
+  /** How the window opens: last size, maximized, or true fullscreen. */
+  windowStartMode: WindowStartMode;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -178,7 +199,10 @@ export const DEFAULT_PREFERENCES: Preferences = {
   conflictListCollapsed: false,
   hideUnchangedRegions: false,
   ignoreWhitespace: false,
+  showResultMinimap: true,
   createBackup: false,
   topPanelRatio: 0.5,
   resultPanelRatio: 0.45,
+  diffSplitRatio: 0.5,
+  windowStartMode: "default",
 };

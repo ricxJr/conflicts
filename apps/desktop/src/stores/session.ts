@@ -16,7 +16,7 @@ import {
   type Resolution,
   type ResolutionStrategy,
 } from "@mergescope/merge-engine";
-import type { BackendError, OpenSessionOutput, Preferences } from "../types/session";
+import type { BackendError, CommitInfo, OpenSessionOutput, Preferences } from "../types/session";
 import { DEFAULT_PREFERENCES } from "../types/session";
 import * as backend from "../services/backend";
 import { editors, revealBaseLine } from "./controllers";
@@ -57,6 +57,8 @@ interface SessionStore {
   prefs: Preferences;
   paletteOpen: boolean;
   settingsOpen: boolean;
+  /** Commit whose diff is shown in the in-app viewer, plus which side it backs. */
+  commitDiff: { commit: CommitInfo; side: "left" | "right" } | null;
   dialog: DialogState | null;
   cursor: { line: number; column: number };
 
@@ -79,6 +81,8 @@ interface SessionStore {
   setPrefs(patch: Partial<Preferences>): void;
   setPaletteOpen(open: boolean): void;
   setSettingsOpen(open: boolean): void;
+  openCommitDiff(commit: CommitInfo, side: "left" | "right"): void;
+  closeCommitDiff(): void;
   setDialog(dialog: DialogState | null): void;
   setCursor(line: number, column: number): void;
   rebuildResult(): void;
@@ -103,6 +107,7 @@ export const useSession = create<SessionStore>((set, get) => ({
   prefs: DEFAULT_PREFERENCES,
   paletteOpen: false,
   settingsOpen: false,
+  commitDiff: null,
   dialog: null,
   cursor: { line: 1, column: 1 },
 
@@ -136,8 +141,8 @@ export const useSession = create<SessionStore>((set, get) => ({
         session.files.incoming.content,
       );
       const initialResult = buildResult(analysis.baseLines, analysis.groups, {
-        currentLabel: session.cli.currentLabel ?? "CURRENT",
-        incomingLabel: session.cli.incomingLabel ?? "INCOMING",
+        currentLabel: session.cli.currentLabel ?? i18n.t("marker.current"),
+        incomingLabel: session.cli.incomingLabel ?? i18n.t("marker.incoming"),
       });
       const firstUnresolved = analysis.groups.findIndex((g) => g.status === "unresolved");
       set({
@@ -163,10 +168,10 @@ export const useSession = create<SessionStore>((set, get) => ({
   },
 
   currentLabel() {
-    return get().session?.cli.currentLabel ?? "CURRENT";
+    return get().session?.cli.currentLabel ?? i18n.t("marker.current");
   },
   incomingLabel() {
-    return get().session?.cli.incomingLabel ?? "INCOMING";
+    return get().session?.cli.incomingLabel ?? i18n.t("marker.incoming");
   },
 
   // Marker labels above keep whatever the CLI passed (git semantics); for the
@@ -391,7 +396,10 @@ export const useSession = create<SessionStore>((set, get) => ({
     set((s) => {
       const prefs = { ...s.prefs, ...patch };
       if (patch.language && patch.language !== s.prefs.language) {
-        void i18n.changeLanguage(patch.language);
+        // Unresolved conflicts already in the result editor embed the
+        // CURRENT/INCOMING fallback marker text baked in at build time, so
+        // switching languages needs an explicit rebuild to retranslate them.
+        void i18n.changeLanguage(patch.language).then(() => get().rebuildResult());
       }
       void backend.savePreferences(prefs);
       return { prefs };
@@ -404,6 +412,14 @@ export const useSession = create<SessionStore>((set, get) => ({
 
   setSettingsOpen(open) {
     set({ settingsOpen: open });
+  },
+
+  openCommitDiff(commit, side) {
+    set({ commitDiff: { commit, side } });
+  },
+
+  closeCommitDiff() {
+    set({ commitDiff: null });
   },
 
   setDialog(dialog) {

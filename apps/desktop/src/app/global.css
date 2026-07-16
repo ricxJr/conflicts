@@ -263,14 +263,29 @@ input[type="number"] {
   background: var(--glass);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(10px);
+  /* When the window is too narrow, let the controls wrap to a second row
+     instead of clipping the theme select / palette / settings buttons. */
+  flex-wrap: wrap;
+  row-gap: 8px;
 }
 
-.topbar-left,
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .topbar-right {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  row-gap: 8px;
 }
 
 .brand {
@@ -322,12 +337,92 @@ input[type="number"] {
   color: var(--text);
 }
 
-.theme-select {
+.select.theme-select {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.theme-select .select-trigger {
+  width: auto;
+  padding: 3px 6px;
+}
+
+.select {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+}
+
+.select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
   background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 3px 6px;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.select-caret {
+  color: var(--text-dim);
+  font-size: 10px;
+  flex: 0 0 auto;
+}
+
+.combobox {
+  position: relative;
+  display: inline-flex;
+  flex: 1;
+}
+
+.combobox input {
+  width: 100%;
+}
+
+.select-menu {
+  /* position/top/left/width are set inline per-instance (see floatingMenu.ts):
+     the menu is portaled to <body> so it can float above scrollable/clipped
+     ancestors (e.g. html/body's overflow: hidden, or the settings panel's
+     scroll body) instead of being cut off by them. */
+  position: fixed;
+  z-index: 1000;
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+}
+
+.select-menu button {
+  display: block;
+  width: 100%;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  text-align: left;
+  white-space: nowrap;
+  background: transparent;
+}
+
+.select-menu button:hover:not(:disabled),
+.select-menu button.highlighted {
+  background: var(--accent-soft);
+  box-shadow: none;
+}
+
+.select-menu button.selected {
+  color: var(--accent);
 }
 
 .palette-button,
@@ -339,6 +434,7 @@ input[type="number"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
 }
 
 /* Panels — floating glass cards */
@@ -359,7 +455,7 @@ input[type="number"] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   padding: 7px 12px;
   background: linear-gradient(
     180deg,
@@ -368,6 +464,7 @@ input[type="number"] {
   );
   border-bottom: 1px solid var(--border);
   font-size: 12px;
+  min-width: 0;
 }
 
 .panel-title {
@@ -378,8 +475,11 @@ input[type="number"] {
   font-size: 11px;
 }
 
+/* Path is the lowest-priority element: it takes leftover space and is the
+   first thing to collapse to an ellipsis when the header runs out of room. */
 .panel-path {
-  flex: 0 1 auto;
+  flex: 1 1 0;
+  min-width: 0;
   color: var(--text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -392,7 +492,7 @@ input[type="number"] {
   min-height: 0;
 }
 
-.top-row {
+.top-row-rest {
   display: flex;
   flex: 1;
   min-height: 0;
@@ -456,6 +556,17 @@ input[type="number"] {
   min-width: 42px;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+/* Bulk "apply to all" actions — tinted to stand out from per-conflict buttons */
+.btn-bulk {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.btn-bulk:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
 }
 
 .dropdown {
@@ -544,23 +655,66 @@ input[type="number"] {
   white-space: nowrap;
 }
 
-/* Title + role badge + commit share the left; the path keeps the right. */
+/* Role badge + comparison + commit share the left; the path keeps the right.
+   The cluster is bounded by the max-widths below, so the path yields space
+   first and the "branch vs BASE" comparison stays put. */
 .panel-header-main {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
 }
 
-.panel-header-main .panel-branch {
-  flex: 0 1 auto;
-  min-width: 0;
+/* The comparison — "<branch> ⟷ BASE" — is the anchor of the header and never
+   shrinks; only its inner branch pill trims (ellipsis) in extreme cases. */
+.panel-compare {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.compare-branch,
+.compare-base {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, currentColor 38%, transparent);
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  white-space: nowrap;
+}
+
+.compare-branch {
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compare-branch-left {
+  color: color-mix(in srgb, var(--accent) 65%, var(--resolved));
+}
+
+.compare-branch-right {
+  color: color-mix(in srgb, var(--accent) 65%, var(--reviewed));
+}
+
+.compare-vs {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.compare-base {
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .panel-commit,
 .commit-link {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -844,6 +998,69 @@ input[type="number"] {
   z-index: 100;
 }
 
+/* In-app commit diff viewer */
+.commit-diff {
+  margin-top: 6vh;
+  width: min(1100px, 94vw);
+  height: 84vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  overflow: hidden;
+}
+
+.commit-diff-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-panel-header) 88%, var(--accent)),
+    var(--bg-panel-header)
+  );
+}
+
+.commit-diff-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.commit-diff-meta .commit-sha {
+  color: var(--accent);
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+.commit-diff-subject {
+  color: var(--text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-diff-status {
+  padding: 12px 16px;
+  color: var(--text-dim);
+}
+
+.commit-diff-error {
+  color: var(--danger);
+}
+
+.commit-diff-editor {
+  flex: 1;
+  min-height: 0;
+}
+
 .palette {
   margin-top: 10vh;
   width: min(560px, 90vw);
@@ -1008,12 +1225,28 @@ input[type="number"] {
 
 .settings-row input[type="text"],
 .settings-row input[type="number"],
-.settings-row select {
+.settings-row .select,
+.settings-row .combobox {
   min-width: 220px;
 }
 
 .settings-row input[type="number"] {
   min-width: 90px;
+}
+
+/* Checkbox row: checkbox + label read left-to-right, whole row clickable. */
+.settings-check {
+  justify-content: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.settings-check > span {
+  color: var(--text-dim);
+}
+
+.settings-check input[type="checkbox"] {
+  flex: 0 0 auto;
 }
 
 .settings-subhead {

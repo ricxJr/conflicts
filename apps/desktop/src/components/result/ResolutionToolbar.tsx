@@ -127,6 +127,7 @@ export function ResolutionToolbar() {
 
       <div className="toolbar-group">
         <button
+          className="btn-bulk"
           disabled={groups.length === 0 || readonly}
           onClick={() => applyStrategyToAll("current")}
           title={t("tooltip.acceptAllCurrent", { label: currentSideLabel })}
@@ -134,6 +135,7 @@ export function ResolutionToolbar() {
           {t("action.acceptAllCurrent")}
         </button>
         <button
+          className="btn-bulk"
           disabled={groups.length === 0 || readonly}
           onClick={() => applyStrategyToAll("incoming")}
           title={t("tooltip.acceptAllIncoming", { label: incomingSideLabel })}

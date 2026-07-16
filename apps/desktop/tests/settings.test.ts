@@ -73,6 +73,21 @@ describe("preferences merge", () => {
     expect(merged.customTheme.bg).toBe(DEFAULT_PREFERENCES.customTheme.bg);
     expect(merged.keybindings.save).toBe("Ctrl+K");
   });
+
+  it("migrates the legacy openFullscreen boolean to windowStartMode", () => {
+    expect(mergePreferences({ openFullscreen: true } as never).windowStartMode).toBe("fullscreen");
+    expect(mergePreferences({ openFullscreen: false } as never).windowStartMode).toBe("default");
+    // The dropped legacy key never survives into the merged prefs.
+    expect("openFullscreen" in mergePreferences({ openFullscreen: true } as never)).toBe(false);
+  });
+
+  it("keeps an explicit windowStartMode over the legacy boolean", () => {
+    const merged = mergePreferences({
+      openFullscreen: true,
+      windowStartMode: "maximized",
+    } as never);
+    expect(merged.windowStartMode).toBe("maximized");
+  });
 });
 
 describe("i18n locales", () => {

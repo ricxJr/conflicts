@@ -14,18 +14,30 @@
       "noMarkers": "\"{{file}}\" has no conflict markers."
     }
   },
+  "marker": {
+    "current": "CURRENT",
+    "incoming": "INCOMING"
+  },
   "panel": {
     "currentVsBase": "{{label}} vs BASE",
     "incomingVsBase": "BASE vs {{label}}",
     "sideCurrent": "Current",
     "sideIncoming": "Incoming",
+    "baseLabel": "BASE",
+    "comparedToBase": "{{role}}: {{label}} compared to BASE",
     "baseAria": "Base (common ancestor)",
     "mergedResult": "Merged result",
     "commit": {
       "authoredBy": "by {{author}}",
-      "openCommit": "Open commit {{sha}} in the browser",
+      "openCommit": "View the diff of commit {{sha}}",
+      "openCommitBrowser": "Open commit {{sha}} in the browser",
       "tooltip": "{{sha}}\n{{subject}}"
     }
+  },
+  "commitDiff": {
+    "title": "Diff of commit {{sha}}",
+    "loading": "Loading the commit diff…",
+    "error": "Could not load the diff: {{message}}"
   },
   "topbar": {
     "resolved": "{{resolved}}/{{total}} resolved",
@@ -191,6 +203,20 @@
       "shortcuts": "Shortcuts"
     },
     "theme": "Theme",
+    "editor": "Editor",
+    "resultMinimap": "Show minimap in the result editor",
+    "window": "Window",
+    "windowMode": "Open window as",
+    "windowModeOption": {
+      "default": "Default",
+      "maximized": "Maximized",
+      "fullscreen": "Fullscreen"
+    },
+    "windowModeHint": {
+      "default": "The window reopens at its last position and size.",
+      "maximized": "The window fills the screen while keeping the title bar.",
+      "fullscreen": "True fullscreen with no window borders or title bar."
+    },
     "customColors": "Custom colors",
     "restoreDefaults": "Restore defaults",
     "color": {

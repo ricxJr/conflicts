@@ -4,10 +4,12 @@
  * in-memory demo session so the UI can be exercised standalone.
  */
 import type {
+  CommitDiffOutput,
   LaunchContext,
   OpenSessionOutput,
   Preferences,
   SaveResultOutput,
+  WindowStartMode,
 } from "../types/session";
 import { DEFAULT_PREFERENCES } from "../types/session";
 
@@ -190,18 +192,14 @@ export async function openMergeSession(): Promise<OpenSessionOutput> {
 }
 
 /**
- * Opens an external URL in the user's browser. Restricted to https for
- * safety. Uses the Tauri opener plugin in the app; falls back to
- * `window.open` in the browser demo.
+ * Diff of a single commit for the session's file: the file content at the
+ * commit's parent (`before`) and at the commit (`after`). In the browser demo
+ * there is no repository, so a small canned diff is returned instead.
  */
-export async function openExternal(url: string): Promise<void> {
-  if (!/^https:\/\//i.test(url)) return;
-  if (isTauri()) {
-    const { openUrl } = await import("@tauri-apps/plugin-opener");
-    await openUrl(url);
-    return;
-  }
-  window.open(url, "_blank", "noopener,noreferrer");
+export async function commitFileDiff(sha: string): Promise<CommitDiffOutput> {
+  if (isTauri()) return invoke<CommitDiffOutput>("commit_file_diff", { sha });
+  const after = sha.startsWith("1a2b3c4") ? DEMO_CURRENT : DEMO_INCOMING;
+  return { before: DEMO_BASE, after, fileName: "OrderService.ts" };
 }
 
 export async function saveMergeResult(
@@ -217,6 +215,31 @@ export async function saveMergeResult(
     });
   }
   return { hash: `demo-${content.length}` };
+}
+
+/**
+ * Applies the window's display mode. No-op in the browser demo. Driven by the
+ * `windowStartMode` preference so the choice sticks across launches, while the
+ * window-state plugin remembers size/position in "default" mode.
+ *
+ * "default" only clears fullscreen (it leaves maximize to the plugin/user, so
+ * a restored maximized window stays maximized); "maximized" fills the work
+ * area keeping the title bar; "fullscreen" is true OS fullscreen.
+ */
+export async function applyWindowStartMode(mode: WindowStartMode): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    const win = getCurrentWindow();
+    if (mode === "fullscreen") {
+      await win.setFullscreen(true);
+      return;
+    }
+    await win.setFullscreen(false);
+    if (mode === "maximized") await win.maximize();
+  } catch {
+    // Window control is best-effort; never block the merge flow on it.
+  }
 }
 
 export async function setExitCode(code: number): Promise<void> {
@@ -237,13 +260,22 @@ export async function exitApp(code: number): Promise<void> {
  * token/binding introduced after the settings file was last written.
  */
 export function mergePreferences(stored: Partial<Preferences> | null): Preferences {
-  const s = stored ?? {};
-  return {
+  // `openFullscreen` was the legacy boolean; strip it here and migrate below.
+  const { openFullscreen, ...s } = (stored ?? {}) as Partial<Preferences> & {
+    openFullscreen?: boolean;
+  };
+  const merged: Preferences = {
     ...DEFAULT_PREFERENCES,
     ...s,
     customTheme: { ...DEFAULT_PREFERENCES.customTheme, ...(s.customTheme ?? {}) },
     keybindings: { ...DEFAULT_PREFERENCES.keybindings, ...(s.keybindings ?? {}) },
   };
+  // Migrate the old boolean: a stored `openFullscreen: true` becomes the
+  // "fullscreen" mode when no explicit windowStartMode was ever saved.
+  if (s.windowStartMode === undefined && openFullscreen) {
+    merged.windowStartMode = "fullscreen";
+  }
+  return merged;
 }
 
 export async function getPreferences(): Promise<Preferences> {
