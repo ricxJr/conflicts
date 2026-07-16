@@ -20,7 +20,12 @@
     "sideCurrent": "Current",
     "sideIncoming": "Incoming",
     "baseAria": "Base (common ancestor)",
-    "mergedResult": "Merged result"
+    "mergedResult": "Merged result",
+    "commit": {
+      "authoredBy": "by {{author}}",
+      "openCommit": "Open commit {{sha}} in the browser",
+      "tooltip": "{{sha}}\n{{subject}}"
+    }
   },
   "topbar": {
     "resolved": "{{resolved}}/{{total}} resolved",

@@ -13,7 +13,13 @@
 import type { monaco } from "../editor/monaco";
 import { editors } from "../stores/controllers";
 import { useSession } from "../stores/session";
-import { buildClusters, computeZones, toBoxes, type ChangeBox, type ZoneSpec } from "./diffGeometry";
+import {
+  buildClusters,
+  computeZones,
+  toBoxes,
+  type ChangeBox,
+  type ZoneSpec,
+} from "./diffGeometry";
 
 function fillerNode(): HTMLElement {
   const el = document.createElement("div");

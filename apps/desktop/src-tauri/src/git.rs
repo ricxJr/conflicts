@@ -15,6 +15,25 @@ pub struct GitContext {
     pub current_branch: Option<String>,
     /// Human name of the side git calls "theirs" (REMOTE/incoming).
     pub incoming_branch: Option<String>,
+    /// Commit backing the "ours" side (HEAD/onto), when detectable.
+    pub current_commit: Option<CommitInfo>,
+    /// Commit backing the "theirs" side (MERGE_HEAD/etc.), when detectable.
+    pub incoming_commit: Option<CommitInfo>,
+    /// Raw `origin` remote URL, so the UI can build a web link to the commit.
+    pub remote_url: Option<String>,
+}
+
+/// Minimal identity of a commit, enough to label a side and link to it.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitInfo {
+    /// Full 40-char object name.
+    pub sha: String,
+    /// Abbreviated hash git chose (unambiguous in this repo).
+    pub short_sha: String,
+    pub author: String,
+    /// First line of the commit message.
+    pub subject: String,
 }
 
 fn git_command(cwd: &Path) -> Command {
@@ -130,6 +149,62 @@ fn side_branches(
     }
 }
 
+/// Identity of the commit `rev` resolves to. One `git show -s` call whose
+/// format packs SHA, short SHA, author and subject into four lines.
+fn commit_info(cwd: &Path, rev: &str) -> Option<CommitInfo> {
+    let out = git_stdout(cwd, &["show", "-s", "--format=%H%n%h%n%an%n%s", rev])?;
+    let mut lines = out.lines();
+    let sha = lines.next()?.trim().to_string();
+    let short_sha = lines.next()?.trim().to_string();
+    let author = lines.next().unwrap_or("").trim().to_string();
+    // Subject is the 4th line; %s never contains a newline, so take it whole.
+    let subject = lines.next().unwrap_or("").to_string();
+    if sha.is_empty() {
+        return None;
+    }
+    Some(CommitInfo {
+        sha,
+        short_sha,
+        author,
+        subject,
+    })
+}
+
+/// Commits backing the "ours"/"theirs" sides, matching the rev choices in
+/// `side_branches` (rebase inverts sides just the same). For rebase the
+/// incoming commit is the one being applied (`stopped-sha`) when available.
+fn side_commits(
+    cwd: &Path,
+    git_dir: Option<&Path>,
+    operation: &str,
+) -> (Option<CommitInfo>, Option<CommitInfo>) {
+    match operation {
+        "merge" => (commit_info(cwd, "HEAD"), commit_info(cwd, "MERGE_HEAD")),
+        "cherry-pick" => (
+            commit_info(cwd, "HEAD"),
+            commit_info(cwd, "CHERRY_PICK_HEAD"),
+        ),
+        "rebase" => {
+            let incoming = git_dir
+                .and_then(|d| {
+                    read_git_file(d, "rebase-merge/stopped-sha")
+                        .or_else(|| read_git_file(d, "rebase-apply/original-commit"))
+                        .or_else(|| read_git_file(d, "rebase-merge/head-name"))
+                        .or_else(|| read_git_file(d, "rebase-apply/head-name"))
+                })
+                .and_then(|rev| commit_info(cwd, &rev));
+            let current = git_dir
+                .and_then(|d| {
+                    read_git_file(d, "rebase-merge/onto").or_else(|| read_git_file(d, "rebase-apply/onto"))
+                })
+                .and_then(|rev| commit_info(cwd, &rev))
+                .or_else(|| commit_info(cwd, "HEAD"));
+            (current, incoming)
+        }
+        _ => (commit_info(cwd, "HEAD"), None),
+    }
+}
+
 pub fn read_context(repo_hint: Option<&Path>, result_path: &Path) -> Option<GitContext> {
     let cwd: PathBuf = repo_hint
         .map(Path::to_path_buf)
@@ -153,6 +228,13 @@ pub fn read_context(repo_hint: Option<&Path>, result_path: &Path) -> Option<GitC
         operation,
         branch.as_ref(),
     );
+    let (current_commit, incoming_commit) =
+        side_commits(&cwd, git_dir.as_deref().map(Path::new), operation);
+
+    // `remote get-url` is the porcelain form; fall back to the raw config key
+    // (older git, or a URL set without a fetch refspec).
+    let remote_url = git_stdout(&cwd, &["remote", "get-url", "origin"])
+        .or_else(|| git_stdout(&cwd, &["config", "--get", "remote.origin.url"]));
 
     Some(GitContext {
         worktree_root,
@@ -160,6 +242,9 @@ pub fn read_context(repo_hint: Option<&Path>, result_path: &Path) -> Option<GitC
         operation: operation.to_string(),
         current_branch,
         incoming_branch,
+        current_commit,
+        incoming_commit,
+        remote_url,
     })
 }
 
@@ -211,6 +296,18 @@ mod tests {
         assert_eq!(ctx.operation, "merge");
         assert_eq!(ctx.current_branch.as_deref(), Some("main"));
         assert_eq!(ctx.incoming_branch.as_deref(), Some("feature/x"));
+
+        // Both sides resolve to a concrete commit authored by the test identity.
+        let current = ctx.current_commit.expect("current commit");
+        let incoming = ctx.incoming_commit.expect("incoming commit");
+        assert_eq!(current.author, "t");
+        assert_eq!(incoming.author, "t");
+        assert_eq!(incoming.subject, "feature");
+        assert_eq!(current.sha.len(), 40);
+        assert!(current.sha.starts_with(&current.short_sha));
+        assert_ne!(current.sha, incoming.sha);
+        // Local test repo has no remote, so no web link can be built.
+        assert!(ctx.remote_url.is_none());
 
         let _ = fs::remove_dir_all(&dir);
     }

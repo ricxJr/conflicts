@@ -48,6 +48,17 @@ export interface LaunchContext {
 
 export type GitOperation = "merge" | "rebase" | "cherry-pick" | "unknown";
 
+/** Identity of the commit backing one side of the conflict. */
+export interface CommitInfo {
+  /** Full 40-char object name. */
+  sha: string;
+  /** Abbreviated hash git chose (unambiguous in this repo). */
+  shortSha: string;
+  author: string;
+  /** First line of the commit message. */
+  subject: string;
+}
+
 export interface GitContext {
   worktreeRoot?: string;
   branch?: string;
@@ -56,6 +67,12 @@ export interface GitContext {
   currentBranch?: string;
   /** Branch name of the "theirs" side (incoming/REMOTE), when detectable. */
   incomingBranch?: string;
+  /** Commit backing the "ours" side (HEAD/onto), when detectable. */
+  currentCommit?: CommitInfo;
+  /** Commit backing the "theirs" side (MERGE_HEAD/etc.), when detectable. */
+  incomingCommit?: CommitInfo;
+  /** Raw `origin` remote URL, used to build a web link to each commit. */
+  remoteUrl?: string;
 }
 
 export interface OpenSessionOutput {

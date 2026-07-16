@@ -55,10 +55,7 @@ describe("cross-panel alignment zones", () => {
 
   it("balances asymmetric modify blocks and maps to side coordinates", () => {
     // Panel 0 grows 5-6 into three lines; panel 1 shrinks 5-6 into one.
-    const boxes = [
-      ...toBoxes(0, [change(5, 6, 5, 7)]),
-      ...toBoxes(1, [change(5, 6, 5, 5)]),
-    ];
+    const boxes = [...toBoxes(0, [change(5, 6, 5, 7)]), ...toBoxes(1, [change(5, 6, 5, 5)])];
     const zones = computeZones(buildClusters(boxes, true));
     expect(zones[0].orig).toEqual([]);
     // Panel 1 needs one filler row after base 6, which is side line 5 there.
@@ -69,10 +66,7 @@ describe("cross-panel alignment zones", () => {
   it("counts removed rows too in the inline view", () => {
     // Inline stacks removed + added rows: panel 0 renders 2+3 rows, panel 1
     // renders 2+1 -> panel 1 needs 2 filler rows.
-    const boxes = [
-      ...toBoxes(0, [change(5, 6, 5, 7)]),
-      ...toBoxes(1, [change(5, 6, 5, 5)]),
-    ];
+    const boxes = [...toBoxes(0, [change(5, 6, 5, 7)]), ...toBoxes(1, [change(5, 6, 5, 5)])];
     const zones = computeZones(buildClusters(boxes, false));
     expect(zones[0].mod).toEqual([]);
     expect(zones[1].mod).toEqual([{ afterLine: 5, lines: 2 }]);
@@ -101,10 +95,7 @@ describe("cross-panel alignment zones", () => {
   });
 
   it("adds no zones when both panels grow equally", () => {
-    const boxes = [
-      ...toBoxes(0, [change(5, 6, 5, 7)]),
-      ...toBoxes(1, [change(5, 6, 5, 7)]),
-    ];
+    const boxes = [...toBoxes(0, [change(5, 6, 5, 7)]), ...toBoxes(1, [change(5, 6, 5, 7)])];
     const zones = computeZones(buildClusters(boxes, true));
     expect(zones[0].orig).toEqual([]);
     expect(zones[0].mod).toEqual([]);

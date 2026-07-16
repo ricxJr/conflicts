@@ -15,6 +15,7 @@ import { DialogHost } from "../components/dialogs/DialogHost";
 import { useShortcuts } from "../features/shortcuts";
 import { attachScrollSync } from "../features/scrollSync";
 import { attachPanelAlignment } from "../features/panelAlignment";
+import { commitUrl } from "../features/commitLink";
 
 export function App() {
   const { t } = useTranslation();
@@ -107,6 +108,8 @@ export function App() {
   // Prefer the detected branch name over CLI labels like HEAD/CURRENT.
   const currentLabel = git?.currentBranch ?? cli.currentLabel ?? "CURRENT";
   const incomingLabel = git?.incomingBranch ?? cli.incomingLabel ?? "INCOMING";
+  const currentCommitHref = commitUrl(git?.remoteUrl, git?.currentCommit?.sha);
+  const incomingCommitHref = commitUrl(git?.remoteUrl, git?.incomingCommit?.sha);
 
   const topRow = (
     <div className="top-row">
@@ -118,6 +121,8 @@ export function App() {
         sideContent={files.current.content}
         fileName={files.result.fileName}
         filePath={files.current.path}
+        commit={git?.currentCommit}
+        commitHref={currentCommitHref}
       />
       {prefs.showBasePanel && files.base && (
         <BaseViewer
@@ -134,6 +139,8 @@ export function App() {
         sideContent={files.incoming.content}
         fileName={files.result.fileName}
         filePath={files.incoming.path}
+        commit={git?.incomingCommit}
+        commitHref={incomingCommitHref}
       />
     </div>
   );

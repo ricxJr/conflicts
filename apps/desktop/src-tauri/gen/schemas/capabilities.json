@@ -1,1 +1,1 @@
-{"default":{"identifier":"default","description":"Main window capabilities (least privilege: core IPC only)","local":true,"windows":["main"],"permissions":["core:default"]}}
+{"default":{"identifier":"default","description":"Main window capabilities (least privilege: core IPC + open external URLs)","local":true,"windows":["main"],"permissions":["core:default","opener:allow-open-url"]}}

@@ -1,8 +1,11 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { monaco, detectLanguage, lineNumberGutterChars } from "../../editor/monaco";
 import { editors } from "../../stores/controllers";
 import { useSession } from "../../stores/session";
 import { modifiedLineToBase } from "../../features/diffGeometry";
+import { openExternal } from "../../services/backend";
+import type { CommitInfo } from "../../types/session";
 
 interface DiffPanelProps {
   side: "left" | "right";
@@ -13,6 +16,10 @@ interface DiffPanelProps {
   sideContent: string;
   fileName: string;
   filePath: string;
+  /** Commit backing this side, when git could resolve it. */
+  commit?: CommitInfo;
+  /** Web URL to open the commit, when the remote host is recognized. */
+  commitHref?: string | null;
 }
 
 /** Ignore clicks on scrollbars/rulers; anything with a position is fair game. */
@@ -32,7 +39,10 @@ export function DiffPanel({
   sideContent,
   fileName,
   filePath,
+  commit,
+  commitHref,
 }: DiffPanelProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(null);
   const hideUnchanged = useSession((s) => s.prefs.hideUnchangedRegions);
@@ -72,9 +82,7 @@ export function DiffPanel({
     // Clicking a change focuses its conflict group: the toolbar/shortcut
     // resolution then targets exactly what was clicked (base-line mapped).
     const activate = (baseLine1: number) => {
-      useSession
-        .getState()
-        .activateGroupAtBaseLine(baseLine1 - 1, { revealPanels: false });
+      useSession.getState().activateGroupAtBaseLine(baseLine1 - 1, { revealPanels: false });
     };
     const clickSubs = [
       editor.getOriginalEditor().onMouseDown((e) => {
@@ -109,13 +117,43 @@ export function DiffPanel({
     });
   }, [hideUnchanged, ignoreWhitespace, showConflictList, editorFontSize, editorFontFamily]);
 
+  const commitBody = commit && (
+    <>
+      <span className="commit-sha">{commit.shortSha}</span>
+      <span className="commit-author">
+        {t("panel.commit.authoredBy", { author: commit.author })}
+      </span>
+    </>
+  );
+  const commitTooltip = commit
+    ? t("panel.commit.tooltip", { sha: commit.sha, subject: commit.subject })
+    : undefined;
+
   return (
     <section className="panel diff-panel" aria-label={title}>
       <header className="panel-header">
-        <span className="panel-title panel-branch" title={title}>
-          {title}
-        </span>
-        <span className={`badge badge-side badge-side-${side}`}>{roleLabel}</span>
+        <div className="panel-header-main">
+          <span className="panel-title panel-branch" title={title}>
+            {title}
+          </span>
+          <span className={`badge badge-side badge-side-${side}`}>{roleLabel}</span>
+          {commit &&
+            (commitHref ? (
+              <button
+                type="button"
+                className="commit-link"
+                onClick={() => void openExternal(commitHref)}
+                title={commitTooltip}
+                aria-label={t("panel.commit.openCommit", { sha: commit.shortSha })}
+              >
+                {commitBody}
+              </button>
+            ) : (
+              <span className="panel-commit" title={commitTooltip}>
+                {commitBody}
+              </span>
+            ))}
+        </div>
         <span className="panel-path" title={filePath}>
           {filePath}
         </span>
