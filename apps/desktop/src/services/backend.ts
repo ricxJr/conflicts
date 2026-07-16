@@ -172,8 +172,36 @@ export async function openMergeSession(): Promise<OpenSessionOutput> {
       worktreeRoot: "demo",
       currentBranch: "feature/discounts",
       incomingBranch: "feature/credit-limit",
+      currentCommit: {
+        sha: "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d",
+        shortSha: "1a2b3c4",
+        author: "Ada Lovelace",
+        subject: "Apply order discount before totals",
+      },
+      incomingCommit: {
+        sha: "9f8e7d6c5b4a3928170615243342516071829304",
+        shortSha: "9f8e7d6",
+        author: "Alan Turing",
+        subject: "Enforce customer credit limit",
+      },
+      remoteUrl: "git@github.com:mergescope/demo.git",
     },
   };
+}
+
+/**
+ * Opens an external URL in the user's browser. Restricted to https for
+ * safety. Uses the Tauri opener plugin in the app; falls back to
+ * `window.open` in the browser demo.
+ */
+export async function openExternal(url: string): Promise<void> {
+  if (!/^https:\/\//i.test(url)) return;
+  if (isTauri()) {
+    const { openUrl } = await import("@tauri-apps/plugin-opener");
+    await openUrl(url);
+    return;
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 export async function saveMergeResult(

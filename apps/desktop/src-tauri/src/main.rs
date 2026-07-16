@@ -102,6 +102,7 @@ fn main() {
     let state = AppState::new(cli_args.clone(), no_conflict_path);
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
             commands::get_launch_context,

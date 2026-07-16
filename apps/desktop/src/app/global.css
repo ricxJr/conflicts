@@ -379,6 +379,7 @@ input[type="number"] {
 }
 
 .panel-path {
+  flex: 0 1 auto;
   color: var(--text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -541,6 +542,59 @@ input[type="number"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Title + role badge + commit share the left; the path keeps the right. */
+.panel-header-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.panel-header-main .panel-branch {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.panel-commit,
+.commit-link {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.commit-sha {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-weight: 600;
+}
+
+.commit-author {
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 16ch;
+}
+
+.commit-link {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.commit-link .commit-sha {
+  color: var(--accent);
+}
+
+.commit-link:hover .commit-sha,
+.commit-link:focus-visible .commit-sha {
+  text-decoration: underline;
 }
 
 /* Conflict list */

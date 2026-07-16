@@ -108,6 +108,7 @@ Diagnostics: `mergescope doctor`. CLI reference: `mergescope --help`.
 
 Client-specific guides: [Git](docs/integrations/git.md) ·
 [Fork](docs/integrations/fork.md) · [GitKraken](docs/integrations/gitkraken.md)
+
 ### Fork (Windows)
 
 1. Open **File → Preferences → Integration** (Git section).
