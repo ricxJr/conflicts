@@ -6,6 +6,7 @@ import {
   isConflicting,
   joinLines,
   normalizeEol,
+  parseConflictMarkers,
   reconstructSides,
   resolutionOutput,
   splitLines,
@@ -426,14 +427,36 @@ export const useSession = create<SessionStore>((set, get) => ({
 }));
 
 /**
- * Single-file launches (context menu / --file) read one conflicted file; the
- * three merge inputs are rebuilt from its markers so the regular pipeline and
- * panels work unchanged. Marker labels double as CLI labels when absent, and
- * the result keeps pointing at the same file so saving writes back in place.
+ * Single-file launches (context menu / --file) read one conflicted file. When
+ * the file is an unmerged path in a git repo the backend already replaced the
+ * three inputs with the real base/ours/theirs blobs from the index, so the
+ * analysis matches a mergetool launch; here we only lift the marker labels.
+ * Otherwise (opened outside a repo, or already resolved in the index) the
+ * three inputs are still the same file, so we rebuild the sides from its
+ * markers. Either way the result keeps pointing at the same file so saving
+ * writes back in place.
  */
 export function expandSingleFileSession(session: OpenSessionOutput): OpenSessionOutput {
   const result = session.files.result;
   const { lines } = splitLines(normalizeEol(result.content));
+  const first = parseConflictMarkers(lines).regions[0];
+  const cli = {
+    ...session.cli,
+    currentLabel: session.cli.currentLabel ?? first?.currentLabel ?? undefined,
+    incomingLabel: session.cli.incomingLabel ?? first?.incomingLabel ?? undefined,
+  };
+
+  // Real three-way inputs already came from the git index when the sides no
+  // longer match the conflicted file itself (a base was provided, or a side
+  // lost its markers). Keep them and only carry the labels over.
+  const backendProvidedSides =
+    !!session.files.base ||
+    session.files.current.content !== result.content ||
+    session.files.incoming.content !== result.content;
+  if (backendProvidedSides) {
+    return { ...session, cli };
+  }
+
   const sides = reconstructSides(lines);
   if (!sides) {
     throw i18n.t("app.singleFile.noMarkers", { file: result.path });
@@ -441,11 +464,7 @@ export function expandSingleFileSession(session: OpenSessionOutput): OpenSession
   const trailing = result.trailingNewline;
   return {
     ...session,
-    cli: {
-      ...session.cli,
-      currentLabel: session.cli.currentLabel ?? sides.currentLabel,
-      incomingLabel: session.cli.incomingLabel ?? sides.incomingLabel,
-    },
+    cli,
     files: {
       base: { ...result, content: joinLines(sides.baseLines, trailing) },
       current: { ...result, content: joinLines(sides.currentLines, trailing) },
