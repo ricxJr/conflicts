@@ -277,6 +277,12 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
 
         assert!(git_ok(&dir, &["init", "-b", "main"]));
+        // Give the repo a local identity so raw `git` commands that lack the
+        // GIT_*_IDENT env vars (e.g. the `merge` below) can still run: a fresh
+        // CI runner has no global user.name/user.email, and `git merge` aborts
+        // before writing MERGE_HEAD when the committer identity is unknown.
+        assert!(git_ok(&dir, &["config", "user.name", "t"]));
+        assert!(git_ok(&dir, &["config", "user.email", "t@t"]));
         fs::write(dir.join("f.txt"), "base\n").unwrap();
         assert!(git_ok(&dir, &["add", "."]));
         assert!(git_ok(&dir, &["commit", "-m", "base"]));
@@ -286,10 +292,16 @@ mod tests {
         assert!(git_ok(&dir, &["checkout", "main"]));
         fs::write(dir.join("f.txt"), "main\n").unwrap();
         assert!(git_ok(&dir, &["commit", "-am", "main"]));
-        // Conflicting merge: leaves MERGE_HEAD behind.
+        // Conflicting merge: leaves MERGE_HEAD behind. Carry the same identity
+        // as the commits above so a fresh CI runner (no global user.name/email)
+        // can't make the merge abort before writing MERGE_HEAD.
         let _ = Command::new("git")
             .current_dir(&dir)
             .args(["merge", "feature/x"])
+            .env("GIT_AUTHOR_NAME", "t")
+            .env("GIT_AUTHOR_EMAIL", "t@t")
+            .env("GIT_COMMITTER_NAME", "t")
+            .env("GIT_COMMITTER_EMAIL", "t@t")
             .output();
 
         let ctx = read_context(Some(&dir), &dir.join("f.txt")).expect("git context");
