@@ -47,10 +47,7 @@ function normalize(host: string, rawPath: string): RemoteRef | null {
  * Web URL for `sha` on the host of `remoteUrl`, or `null` when the remote is
  * missing/unrecognized or the SHA is absent. Always `https://`.
  */
-export function commitUrl(
-  remoteUrl: string | undefined,
-  sha: string | undefined,
-): string | null {
+export function commitUrl(remoteUrl: string | undefined, sha: string | undefined): string | null {
   if (!remoteUrl || !sha) return null;
   const ref = parseRemote(remoteUrl);
   if (!ref) return null;
