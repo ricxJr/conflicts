@@ -112,7 +112,6 @@ fn main() {
             commands::get_launch_context,
             commands::open_merge_session,
             commands::save_merge_result,
-            commands::commit_file_diff,
             commands::set_exit_code,
             commands::exit_app,
             commands::get_preferences,

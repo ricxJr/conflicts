@@ -90,15 +90,6 @@ export interface SaveResultOutput {
   hash: string;
 }
 
-/** File content on both sides of a single commit (parent → commit). */
-export interface CommitDiffOutput {
-  /** File as it stood at the commit's parent; empty for a root/new file. */
-  before: string;
-  /** File as it stood at the commit itself. */
-  after: string;
-  fileName: string;
-}
-
 export interface BackendError {
   code: "external-change" | "read-error" | "write-error" | "invalid-session" | "internal";
   message: string;

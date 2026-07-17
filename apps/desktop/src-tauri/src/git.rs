@@ -69,17 +69,6 @@ fn git_output_bytes(cwd: &Path, args: &[&str]) -> Option<Vec<u8>> {
     output.status.success().then_some(output.stdout)
 }
 
-/// Content of `file_name` at `rev`, decoded like a disk read (lossy UTF-8).
-/// `dir` must sit inside the repository; `<rev>:./<file_name>` resolves the
-/// path relative to `dir`, so a bare file name matches exactly this file.
-/// None when git can't resolve the rev/path (e.g. the file didn't exist yet,
-/// or a root commit has no parent). Used to show one commit's diff in-app.
-pub fn show_file_at(dir: &Path, rev: &str, file_name: &str) -> Option<String> {
-    let spec = format!("{rev}:./{file_name}");
-    let bytes = git_output_bytes(dir, &["show", spec.as_str()])?;
-    Some(String::from_utf8_lossy(&bytes).into_owned())
-}
-
 /// The three merge stages of a conflicted path, read from the index:
 /// stage 1 = base (common ancestor), 2 = ours/current, 3 = theirs/incoming.
 #[derive(Debug, Default)]
@@ -425,36 +414,6 @@ mod tests {
 
         // Committed, no merge in progress: the path has no unmerged stages.
         assert!(read_index_stages(Some(&dir), &dir.join("f.txt")).is_none());
-
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn show_file_at_reads_both_sides_of_a_commit() {
-        if Command::new("git").arg("--version").output().is_err() {
-            return;
-        }
-        let dir = std::env::temp_dir().join(format!("mergescope-show-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&dir);
-        fs::create_dir_all(&dir).unwrap();
-        assert!(git_ok(&dir, &["init", "-b", "main"]));
-        assert!(git_ok(&dir, &["config", "user.name", "t"]));
-        assert!(git_ok(&dir, &["config", "user.email", "t@t"]));
-
-        // Root commit adds the file; a second commit changes it.
-        fs::write(dir.join("f.txt"), "v1\n").unwrap();
-        assert!(git_ok(&dir, &["add", "."]));
-        assert!(git_ok(&dir, &["commit", "-m", "one"]));
-        fs::write(dir.join("f.txt"), "v2\n").unwrap();
-        assert!(git_ok(&dir, &["commit", "-am", "two"]));
-
-        // HEAD sees "v2"; its parent (HEAD^) sees "v1" — the diff of the commit.
-        assert_eq!(show_file_at(&dir, "HEAD", "f.txt").as_deref(), Some("v2\n"));
-        assert_eq!(show_file_at(&dir, "HEAD^", "f.txt").as_deref(), Some("v1\n"));
-        // The root commit has no parent: no "before" side.
-        assert!(show_file_at(&dir, "HEAD^^", "f.txt").is_none());
-        // An unknown path yields nothing rather than erroring.
-        assert!(show_file_at(&dir, "HEAD", "missing.txt").is_none());
 
         let _ = fs::remove_dir_all(&dir);
     }

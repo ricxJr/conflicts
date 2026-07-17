@@ -1,45 +1,35 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { monaco, detectLanguage } from "../../editor/monaco";
 import { useSession } from "../../stores/session";
-import { commitFileDiff } from "../../services/backend";
-import type { CommitDiffOutput } from "../../types/session";
 
 /**
- * In-app viewer for a single commit's diff on the session's file (the commit
- * against its parent). Opened by clicking a side's commit in the diff header —
- * replaces the old external web link, which 404'd for unpushed commits.
+ * Isolated, full-width side-by-side view of one side's diff against BASE — the
+ * exact same comparison the diff panel shows, pulled out for a focused read.
+ * Opened by clicking a side's commit in the diff header.
+ *
+ * It reads the session content already in memory (original = BASE, modified =
+ * the side) instead of asking git for the commit-vs-parent diff. That kept the
+ * two views out of sync — a merge commit's diff against its own parent barely
+ * touches the file, so the old viewer looked empty next to the panel. Reusing
+ * the session inputs means it always matches the panel and works for merge
+ * commits, single-file launches, and never-pushed commits alike.
  */
 export function CommitDiffModal() {
   const { t } = useTranslation();
   const target = useSession((s) => s.commitDiff);
   const close = useSession((s) => s.closeCommitDiff);
+  const files = useSession((s) => s.session?.files);
   const editorFontFamily = useSession((s) => s.prefs.editorFontFamily);
   const editorFontSize = useSession((s) => s.prefs.editorFontSize);
+  const ignoreWhitespace = useSession((s) => s.prefs.ignoreWhitespace);
+  const hideUnchanged = useSession((s) => s.prefs.hideUnchangedRegions);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [data, setData] = useState<CommitDiffOutput | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  const sha = target?.commit.sha;
-
-  // Fetch the diff whenever a new commit is targeted.
-  useEffect(() => {
-    if (!sha) return;
-    let cancelled = false;
-    setData(null);
-    setError(null);
-    setLoading(true);
-    commitFileDiff(sha)
-      .then((d) => !cancelled && setData(d))
-      .catch(
-        (e) => !cancelled && setError(typeof e === "string" ? e : (e?.message ?? String(e))),
-      )
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [sha]);
+  const baseContent = files?.base?.content ?? "";
+  const sideContent =
+    target?.side === "left" ? (files?.current.content ?? "") : (files?.incoming.content ?? "");
+  const fileName = files?.result.fileName ?? "";
 
   // Close on Escape while open.
   useEffect(() => {
@@ -51,12 +41,14 @@ export function CommitDiffModal() {
     return () => window.removeEventListener("keydown", onKey);
   }, [target, close]);
 
-  // Build the Monaco diff editor once the content is available.
+  // Build the Monaco diff editor: original = BASE, modified = this side. Same
+  // whitespace/collapse preferences as the panel so the highlighting matches;
+  // always side-by-side, since a roomy comparison is the point of isolating it.
   useEffect(() => {
-    if (!data || !containerRef.current) return;
-    const language = detectLanguage(data.fileName);
-    const original = monaco.editor.createModel(data.before, language);
-    const modified = monaco.editor.createModel(data.after, language);
+    if (!target || !containerRef.current) return;
+    const language = detectLanguage(fileName);
+    const original = monaco.editor.createModel(baseContent, language);
+    const modified = monaco.editor.createModel(sideContent, language);
     const editor = monaco.editor.createDiffEditor(containerRef.current, {
       readOnly: true,
       originalEditable: false,
@@ -66,6 +58,8 @@ export function CommitDiffModal() {
       scrollBeyondLastLine: false,
       fontSize: editorFontSize,
       fontFamily: editorFontFamily || undefined,
+      ignoreTrimWhitespace: ignoreWhitespace,
+      hideUnchangedRegions: { enabled: hideUnchanged },
     });
     editor.setModel({ original, modified });
     return () => {
@@ -73,7 +67,16 @@ export function CommitDiffModal() {
       original.dispose();
       modified.dispose();
     };
-  }, [data, editorFontFamily, editorFontSize]);
+  }, [
+    target,
+    baseContent,
+    sideContent,
+    fileName,
+    editorFontFamily,
+    editorFontSize,
+    ignoreWhitespace,
+    hideUnchanged,
+  ]);
 
   if (!target) return null;
   const { commit, side } = target;
@@ -102,13 +105,7 @@ export function CommitDiffModal() {
             {t("settings.close")}
           </button>
         </div>
-        {loading && <div className="commit-diff-status">{t("commitDiff.loading")}</div>}
-        {error && (
-          <div className="commit-diff-status commit-diff-error" role="alert">
-            {t("commitDiff.error", { message: error })}
-          </div>
-        )}
-        <div ref={containerRef} className="commit-diff-editor" hidden={!data} />
+        <div ref={containerRef} className="commit-diff-editor" />
       </div>
     </div>
   );

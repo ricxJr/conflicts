@@ -4,7 +4,6 @@
  * in-memory demo session so the UI can be exercised standalone.
  */
 import type {
-  CommitDiffOutput,
   LaunchContext,
   OpenSessionOutput,
   Preferences,
@@ -189,17 +188,6 @@ export async function openMergeSession(): Promise<OpenSessionOutput> {
       remoteUrl: "git@github.com:mergescope/demo.git",
     },
   };
-}
-
-/**
- * Diff of a single commit for the session's file: the file content at the
- * commit's parent (`before`) and at the commit (`after`). In the browser demo
- * there is no repository, so a small canned diff is returned instead.
- */
-export async function commitFileDiff(sha: string): Promise<CommitDiffOutput> {
-  if (isTauri()) return invoke<CommitDiffOutput>("commit_file_diff", { sha });
-  const after = sha.startsWith("1a2b3c4") ? DEMO_CURRENT : DEMO_INCOMING;
-  return { before: DEMO_BASE, after, fileName: "OrderService.ts" };
 }
 
 export async function saveMergeResult(

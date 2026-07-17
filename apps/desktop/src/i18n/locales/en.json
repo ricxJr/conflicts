@@ -35,9 +35,7 @@
     }
   },
   "commitDiff": {
-    "title": "Diff of commit {{sha}}",
-    "loading": "Loading the commit diff…",
-    "error": "Could not load the diff: {{message}}"
+    "title": "Diff of commit {{sha}}"
   },
   "topbar": {
     "resolved": "{{resolved}}/{{total}} resolved",

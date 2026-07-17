@@ -94,14 +94,6 @@ pub struct SaveResultOutput {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CommitDiffOutput {
-    before: String,
-    after: String,
-    file_name: String,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct LaunchContextDto {
     mode: &'static str,
     no_conflict_path: Option<String>,
@@ -255,58 +247,6 @@ pub fn save_merge_result(
     let new_hash = files::hash_bytes(&bytes);
     logging::info(&format!("result saved: {} bytes", bytes.len()));
     Ok(SaveResultOutput { hash: new_hash })
-}
-
-/// Returns the diff of a single commit for the session's result file: the file
-/// content at the commit's parent (`before`) and at the commit (`after`). Lets
-/// the UI show a commit's own changes in-app instead of linking to a web host
-/// (which 404s for commits that were never pushed).
-#[tauri::command]
-pub fn commit_file_diff(
-    state: State<AppState>,
-    sha: String,
-) -> Result<CommitDiffOutput, BackendError> {
-    let cli = state.cli.as_ref().ok_or_else(|| {
-        BackendError::new(
-            "invalid-session",
-            "MergeScope was started without a merge session",
-        )
-    })?;
-    // Args are passed to git as a fixed array (no shell), so injection is not a
-    // concern; still reject anything that can't be a git object name.
-    if sha.is_empty() || !sha.bytes().all(|b| b.is_ascii_hexdigit()) {
-        return Err(BackendError::new("read-error", "invalid commit id"));
-    }
-
-    let file_name = cli
-        .result
-        .file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .ok_or_else(|| BackendError::new("read-error", "result path has no file name"))?;
-    // The result file is the real repository file (the mergetool's $MERGED),
-    // so its directory sits inside the worktree even when current/incoming are
-    // temp copies. Fall back to the explicit repo path if there's no parent.
-    let dir = cli
-        .result
-        .parent()
-        .map(std::path::Path::to_path_buf)
-        .or_else(|| cli.repo.clone())
-        .ok_or_else(|| BackendError::new("read-error", "cannot locate repository"))?;
-
-    let after = git::show_file_at(&dir, &sha, &file_name).ok_or_else(|| {
-        BackendError::new(
-            "read-error",
-            format!("commit {sha} does not contain {file_name}"),
-        )
-    })?;
-    // No parent (root commit) or the file is new in this commit → empty before.
-    let before = git::show_file_at(&dir, &format!("{sha}^"), &file_name).unwrap_or_default();
-
-    Ok(CommitDiffOutput {
-        before,
-        after,
-        file_name,
-    })
 }
 
 #[tauri::command]
