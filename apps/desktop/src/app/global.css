@@ -998,11 +998,13 @@ input[type="number"] {
   z-index: 100;
 }
 
-/* In-app commit diff viewer */
+/* In-app commit diff viewer — resizable; size persisted via inline style.
+   Anchored top-left (auto right margin beats the overlay's centering) so the
+   drag corner stays under the cursor instead of the box re-centering mid-drag. */
 .commit-diff {
   margin-top: 6vh;
-  width: min(1100px, 94vw);
-  height: 84vh;
+  margin-left: 3vw;
+  margin-right: auto;
   display: flex;
   flex-direction: column;
   background: var(--bg-elevated);
@@ -1010,6 +1012,11 @@ input[type="number"] {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-pop);
   overflow: hidden;
+  resize: both;
+  min-width: 480px;
+  min-height: 320px;
+  max-width: 96vw;
+  max-height: 92vh;
 }
 
 .commit-diff-header {
@@ -1290,6 +1297,30 @@ input[type="number"] {
   min-width: 0;
   padding: 3px 6px;
   font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+.tab-override-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tab-override-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-override-ext {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 6px;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+.tab-override-size {
+  width: 72px;
+  flex: none;
 }
 
 .shortcut-list {

@@ -24,6 +24,19 @@ export function ResolutionToolbar() {
   const group = groups[activeIndex];
   const disabled = !group || readonly;
 
+  // The ▲▼ buttons step through real conflicts only, so the counter reports the
+  // position among conflicts — not among every diff group. A "–" ordinal means
+  // the active group is a non-conflict (e.g. selected from the list).
+  const conflictIndices = useMemo(
+    () => groups.reduce<number[]>((acc, g, i) => (isConflicting(g) ? [...acc, i] : acc), []),
+    [groups],
+  );
+  const activeConflictOrdinal = conflictIndices.indexOf(activeIndex);
+  const counterLabel =
+    conflictIndices.length > 0
+      ? `${activeConflictOrdinal >= 0 ? activeConflictOrdinal + 1 : "–"}/${conflictIndices.length}`
+      : "0/0";
+
   const withKey = (label: string, id: string) =>
     kb[id] ? `${label} (${formatChord(kb[id])})` : label;
 
@@ -44,8 +57,8 @@ export function ResolutionToolbar() {
         >
           ▼
         </button>
-        <span className="toolbar-counter">
-          {groups.length > 0 ? `${activeIndex + 1}/${groups.length}` : "0/0"}
+        <span className="toolbar-counter" title={t("toolbar.conflictCounter")}>
+          {counterLabel}
         </span>
         {group && (
           <span

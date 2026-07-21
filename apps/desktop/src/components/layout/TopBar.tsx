@@ -58,6 +58,14 @@ export function TopBar() {
           />
           {t("topbar.ignoreWs")}
         </label>
+        <label className="toggle" title={t("topbar.renderWsTitle")}>
+          <input
+            type="checkbox"
+            checked={prefs.renderWhitespace}
+            onChange={(e) => setPrefs({ renderWhitespace: e.target.checked })}
+          />
+          {t("topbar.renderWs")}
+        </label>
         <label className="toggle" title={t("topbar.baseTitle")}>
           <input
             type="checkbox"

@@ -75,6 +75,8 @@ interface SessionStore {
   activateGroupAtBaseLine(baseLine: number, opts?: RevealOptions): void;
   nextConflict(): void;
   prevConflict(): void;
+  firstConflict(): void;
+  lastConflict(): void;
   onRegionsEdited(changedGroupIds: string[]): void;
   save(closeAfter: boolean): Promise<void>;
   cancel(): void;
@@ -90,6 +92,15 @@ interface SessionStore {
 
 function countUnresolved(groups: ConflictGroup[]): number {
   return groups.filter((g) => g.status === "unresolved").length;
+}
+
+/** Indices of the groups that are genuine conflicts (see `isConflicting`). */
+function conflictIndices(groups: ConflictGroup[]): number[] {
+  const indices: number[] = [];
+  groups.forEach((group, i) => {
+    if (isConflicting(group)) indices.push(i);
+  });
+  return indices;
 }
 
 function makeResolution(strategy: ResolutionStrategy, manualLines?: string[]): Resolution {
@@ -294,11 +305,32 @@ export const useSession = create<SessionStore>((set, get) => ({
     if (best >= 0 && best !== activeIndex) get().setActiveIndex(best, opts);
   },
 
+  // Navigation targets *real* conflicts only (overlapping / delete-modify /
+  // unknown), regardless of whether they were already resolved — independent
+  // and auto-resolved changes are skipped so the buttons step through the
+  // things that actually needed a decision.
   nextConflict() {
-    get().setActiveIndex(get().activeIndex + 1);
+    const { groups, activeIndex } = get();
+    const indices = conflictIndices(groups);
+    if (indices.length === 0) return;
+    const target = indices.find((i) => i > activeIndex) ?? indices[0];
+    get().setActiveIndex(target);
   },
   prevConflict() {
-    get().setActiveIndex(get().activeIndex - 1);
+    const { groups, activeIndex } = get();
+    const indices = conflictIndices(groups);
+    if (indices.length === 0) return;
+    const target =
+      [...indices].reverse().find((i) => i < activeIndex) ?? indices[indices.length - 1];
+    get().setActiveIndex(target);
+  },
+  firstConflict() {
+    const indices = conflictIndices(get().groups);
+    if (indices.length > 0) get().setActiveIndex(indices[0]);
+  },
+  lastConflict() {
+    const indices = conflictIndices(get().groups);
+    if (indices.length > 0) get().setActiveIndex(indices[indices.length - 1]);
   },
 
   onRegionsEdited(changedGroupIds) {

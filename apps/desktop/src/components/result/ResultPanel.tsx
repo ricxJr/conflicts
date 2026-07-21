@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { monaco, detectLanguage, lineNumberGutterChars } from "../../editor/monaco";
+import { monaco, detectLanguage, lineNumberGutterChars, resolveTabSize } from "../../editor/monaco";
 import { editors, type ResultController } from "../../stores/controllers";
 import { useSession } from "../../stores/session";
 import { ResolutionToolbar } from "./ResolutionToolbar";
@@ -30,6 +30,9 @@ export function ResultPanel() {
   const editorFontFamily = useSession((s) => s.prefs.editorFontFamily);
   const editorFontSize = useSession((s) => s.prefs.editorFontSize);
   const showResultMinimap = useSession((s) => s.prefs.showResultMinimap);
+  const renderWhitespace = useSession((s) => s.prefs.renderWhitespace);
+  const tabSize = useSession((s) => s.prefs.tabSize);
+  const tabSizeOverrides = useSession((s) => s.prefs.tabSizeOverrides);
   const readonly = session?.cli.readonly ?? false;
 
   // Create the editor once.
@@ -39,6 +42,7 @@ export function ResultPanel() {
       automaticLayout: true,
       minimap: { enabled: showResultMinimap },
       scrollBeyondLastLine: false,
+      renderWhitespace: renderWhitespace ? "all" : "none",
       fontSize: editorFontSize,
       fontFamily: editorFontFamily || undefined,
       lineNumbersMinChars: 3,
@@ -86,10 +90,22 @@ export function ResultPanel() {
     });
   }, [editorFontSize, editorFontFamily]);
 
-  // React to minimap preference changes.
+  // React to minimap / whitespace-rendering preference changes.
   useEffect(() => {
-    editorRef.current?.updateOptions({ minimap: { enabled: showResultMinimap } });
-  }, [showResultMinimap]);
+    editorRef.current?.updateOptions({
+      minimap: { enabled: showResultMinimap },
+      renderWhitespace: renderWhitespace ? "all" : "none",
+    });
+  }, [showResultMinimap, renderWhitespace]);
+
+  // React to tab-width preference changes (file name is stable per session).
+  useEffect(() => {
+    const fileName = session?.files.result.fileName;
+    if (!fileName) return;
+    editorRef.current
+      ?.getModel()
+      ?.updateOptions({ tabSize: resolveTabSize(fileName, { tabSize, tabSizeOverrides }) });
+  }, [tabSize, tabSizeOverrides, session]);
 
   // (Re)initialize content and regions whenever the generated result changes.
   useEffect(() => {
@@ -101,6 +117,7 @@ export function ResultPanel() {
       initialResult.lines.join("\n"),
       detectLanguage(fileName),
     );
+    model.updateOptions({ tabSize: resolveTabSize(fileName, { tabSize, tabSizeOverrides }) });
     const previous = editor.getModel();
     suppressRef.current++;
     editor.setModel(model);

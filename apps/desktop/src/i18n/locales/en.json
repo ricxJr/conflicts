@@ -43,6 +43,8 @@
     "changesOnlyTitle": "Collapse unchanged regions in the diff panels",
     "ignoreWs": "Ignore WS",
     "ignoreWsTitle": "Ignore whitespace-only differences",
+    "renderWs": "Whitespace",
+    "renderWsTitle": "Show whitespace glyphs (· for spaces, → for tabs)",
     "base": "Base",
     "baseTitle": "Pin the base file as a third panel",
     "list": "List",
@@ -83,7 +85,8 @@
     "prev": "Previous conflict",
     "next": "Next conflict",
     "statusTitle": "Status: {{status}}",
-    "bothOrder": "Both: choose order"
+    "bothOrder": "Both: choose order",
+    "conflictCounter": "Position among real conflicts (independent changes are skipped)"
   },
   "classification": {
     "independent": "Independent changes",
@@ -181,6 +184,7 @@
     "toggle-list": "Toggle conflict list",
     "toggle-changes-only": "Toggle changes-only view",
     "toggle-whitespace": "Toggle ignore whitespace",
+    "toggle-render-whitespace": "Toggle whitespace glyphs",
     "theme-dark": "Theme: Dark",
     "theme-light": "Theme: Light",
     "theme-system": "Theme: System",
@@ -203,6 +207,15 @@
     "theme": "Theme",
     "editor": "Editor",
     "resultMinimap": "Show minimap in the result editor",
+    "renderWhitespace": "Show whitespace glyphs (· spaces, → tabs)",
+    "tabSize": "Default tab width",
+    "tabSizeOverrides": "Tab width by file type",
+    "tabSizeAdd": "Add",
+    "tabSizeHint": "Files with these extensions use their own tab width; everything else uses the default.",
+    "tabSizeExtPlaceholder": "e.g. mac",
+    "tabSizeExtAria": "File extension",
+    "tabSizeValueAria": "Tab width",
+    "tabSizeRemove": "Remove",
     "window": "Window",
     "windowMode": "Open window as",
     "windowModeOption": {

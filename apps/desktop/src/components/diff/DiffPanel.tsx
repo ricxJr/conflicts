@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { monaco, detectLanguage, lineNumberGutterChars } from "../../editor/monaco";
+import { monaco, detectLanguage, lineNumberGutterChars, resolveTabSize } from "../../editor/monaco";
 import { editors } from "../../stores/controllers";
 import { useSession } from "../../stores/session";
 import { modifiedLineToBase } from "../../features/diffGeometry";
@@ -48,12 +48,18 @@ export function DiffPanel({
   const showConflictList = useSession((s) => s.prefs.showConflictList);
   const editorFontFamily = useSession((s) => s.prefs.editorFontFamily);
   const editorFontSize = useSession((s) => s.prefs.editorFontSize);
+  const renderWhitespace = useSession((s) => s.prefs.renderWhitespace);
+  const tabSize = useSession((s) => s.prefs.tabSize);
+  const tabSizeOverrides = useSession((s) => s.prefs.tabSizeOverrides);
 
   useEffect(() => {
     if (!containerRef.current) return;
     const language = detectLanguage(fileName);
     const original = monaco.editor.createModel(baseContent, language);
     const modified = monaco.editor.createModel(sideContent, language);
+    const resolvedTabSize = resolveTabSize(fileName, { tabSize, tabSizeOverrides });
+    original.updateOptions({ tabSize: resolvedTabSize });
+    modified.updateOptions({ tabSize: resolvedTabSize });
 
     const editor = monaco.editor.createDiffEditor(containerRef.current, {
       readOnly: true,
@@ -65,6 +71,7 @@ export function DiffPanel({
       scrollBeyondLastLine: false,
       renderOverviewRuler: true,
       diffWordWrap: "off",
+      renderWhitespace: renderWhitespace ? "all" : "none",
       fontSize: editorFontSize,
       fontFamily: editorFontFamily || undefined,
       lineNumbersMinChars: lineNumberGutterChars(
@@ -110,10 +117,27 @@ export function DiffPanel({
       renderSideBySide: !showConflictList,
       useInlineViewWhenSpaceIsLimited: false,
       hideUnchangedRegions: { enabled: hideUnchanged },
+      renderWhitespace: renderWhitespace ? "all" : "none",
       fontSize: editorFontSize,
       fontFamily: editorFontFamily || undefined,
     });
-  }, [hideUnchanged, ignoreWhitespace, showConflictList, editorFontSize, editorFontFamily]);
+    const models = editorRef.current?.getModel();
+    if (models) {
+      const resolvedTabSize = resolveTabSize(fileName, { tabSize, tabSizeOverrides });
+      models.original.updateOptions({ tabSize: resolvedTabSize });
+      models.modified.updateOptions({ tabSize: resolvedTabSize });
+    }
+  }, [
+    hideUnchanged,
+    ignoreWhitespace,
+    showConflictList,
+    editorFontSize,
+    editorFontFamily,
+    renderWhitespace,
+    tabSize,
+    tabSizeOverrides,
+    fileName,
+  ]);
 
   const commitBody = commit && (
     <>

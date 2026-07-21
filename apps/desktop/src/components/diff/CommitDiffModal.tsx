@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { monaco, detectLanguage } from "../../editor/monaco";
+import { monaco, detectLanguage, resolveTabSize } from "../../editor/monaco";
 import { useSession } from "../../stores/session";
 
 /**
@@ -24,7 +24,13 @@ export function CommitDiffModal() {
   const editorFontSize = useSession((s) => s.prefs.editorFontSize);
   const ignoreWhitespace = useSession((s) => s.prefs.ignoreWhitespace);
   const hideUnchanged = useSession((s) => s.prefs.hideUnchangedRegions);
+  const renderWhitespace = useSession((s) => s.prefs.renderWhitespace);
+  const tabSize = useSession((s) => s.prefs.tabSize);
+  const tabSizeOverrides = useSession((s) => s.prefs.tabSizeOverrides);
+  const width = useSession((s) => s.prefs.commitDiffWidth);
+  const height = useSession((s) => s.prefs.commitDiffHeight);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const baseContent = files?.base?.content ?? "";
   const sideContent =
@@ -49,6 +55,9 @@ export function CommitDiffModal() {
     const language = detectLanguage(fileName);
     const original = monaco.editor.createModel(baseContent, language);
     const modified = monaco.editor.createModel(sideContent, language);
+    const resolvedTabSize = resolveTabSize(fileName, { tabSize, tabSizeOverrides });
+    original.updateOptions({ tabSize: resolvedTabSize });
+    modified.updateOptions({ tabSize: resolvedTabSize });
     const editor = monaco.editor.createDiffEditor(containerRef.current, {
       readOnly: true,
       originalEditable: false,
@@ -56,6 +65,7 @@ export function CommitDiffModal() {
       automaticLayout: true,
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
+      renderWhitespace: renderWhitespace ? "all" : "none",
       fontSize: editorFontSize,
       fontFamily: editorFontFamily || undefined,
       ignoreTrimWhitespace: ignoreWhitespace,
@@ -76,7 +86,35 @@ export function CommitDiffModal() {
     editorFontSize,
     ignoreWhitespace,
     hideUnchanged,
+    renderWhitespace,
+    tabSize,
+    tabSizeOverrides,
   ]);
+
+  // Persist the user's chosen size (drag-resize via CSS `resize: both`) so the
+  // viewer reopens at the size they left it. Debounced to avoid a write per
+  // pixel; border-box means offsetWidth/Height match the CSS size exactly.
+  useEffect(() => {
+    const el = dialogRef.current;
+    if (!target || !el) return;
+    let timer = 0;
+    const observer = new ResizeObserver(() => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        const w = el.offsetWidth;
+        const h = el.offsetHeight;
+        const prefs = useSession.getState().prefs;
+        if (w > 0 && h > 0 && (w !== prefs.commitDiffWidth || h !== prefs.commitDiffHeight)) {
+          useSession.getState().setPrefs({ commitDiffWidth: w, commitDiffHeight: h });
+        }
+      }, 300);
+    });
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(timer);
+    };
+  }, [target]);
 
   if (!target) return null;
   const { commit, side } = target;
@@ -85,9 +123,11 @@ export function CommitDiffModal() {
   return (
     <div className="overlay" onMouseDown={close}>
       <div
+        ref={dialogRef}
         className="commit-diff"
         role="dialog"
         aria-label={t("commitDiff.title", { sha: commit.shortSha })}
+        style={{ width, height }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="commit-diff-header">

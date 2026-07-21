@@ -179,6 +179,27 @@ export function lineNumberGutterChars(lineCount: number): number {
   return Math.max(4, String(Math.max(1, lineCount)).length + 1);
 }
 
+/**
+ * Effective tab width for a file: a per-extension override wins over the
+ * default. Extensions are matched case-insensitively without the leading dot,
+ * so `.mac`/`.cls` files can widen to their conventional 10 columns while the
+ * rest keep the default (usually 4).
+ */
+export function resolveTabSize(
+  fileName: string,
+  prefs: Pick<Preferences, "tabSize" | "tabSizeOverrides">,
+): number {
+  const dot = fileName.lastIndexOf(".");
+  if (dot >= 0) {
+    const ext = fileName.slice(dot + 1).toLowerCase();
+    const override = prefs.tabSizeOverrides[ext];
+    if (typeof override === "number" && Number.isFinite(override) && override > 0) {
+      return override;
+    }
+  }
+  return prefs.tabSize;
+}
+
 export function detectLanguage(fileName: string): string {
   const dot = fileName.lastIndexOf(".");
   if (dot < 0) return "plaintext";

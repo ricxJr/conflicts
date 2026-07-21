@@ -29,6 +29,7 @@ export const COMMAND_META: { id: string; titleKey: string }[] = [
   { id: "toggle-list", titleKey: "command.toggle-list" },
   { id: "toggle-changes-only", titleKey: "command.toggle-changes-only" },
   { id: "toggle-whitespace", titleKey: "command.toggle-whitespace" },
+  { id: "toggle-render-whitespace", titleKey: "command.toggle-render-whitespace" },
   { id: "theme-dark", titleKey: "command.theme-dark" },
   { id: "theme-light", titleKey: "command.theme-light" },
   { id: "theme-system", titleKey: "command.theme-system" },
@@ -48,8 +49,8 @@ export function getCommandActions(): Record<string, () => void> {
   return {
     next: () => s.nextConflict(),
     prev: () => s.prevConflict(),
-    first: () => s.setActiveIndex(0),
-    last: () => s.setActiveIndex(s.groups.length - 1),
+    first: () => s.firstConflict(),
+    last: () => s.lastConflict(),
     "accept-current": () => group && s.applyStrategy(group.id, "current"),
     "accept-incoming": () => group && s.applyStrategy(group.id, "incoming"),
     "accept-both": () => group && s.applyStrategy(group.id, "both-current-first"),
@@ -65,6 +66,7 @@ export function getCommandActions(): Record<string, () => void> {
     "toggle-changes-only": () =>
       s.setPrefs({ hideUnchangedRegions: !s.prefs.hideUnchangedRegions }),
     "toggle-whitespace": () => s.setPrefs({ ignoreWhitespace: !s.prefs.ignoreWhitespace }),
+    "toggle-render-whitespace": () => s.setPrefs({ renderWhitespace: !s.prefs.renderWhitespace }),
     "theme-dark": () => s.setPrefs({ theme: "dark" }),
     "theme-light": () => s.setPrefs({ theme: "light" }),
     "theme-system": () => s.setPrefs({ theme: "system" }),
