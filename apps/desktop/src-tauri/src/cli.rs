@@ -145,7 +145,18 @@ pub fn parse(args: &[String]) -> Result<CliCommand, String> {
         };
 
         match arg {
-            "--base" => base = Some(PathBuf::from(take_value("--base")?)),
+            // An empty value (`--base ""`) means "no common ancestor": Fork and
+            // other clients pass it for add/add conflicts, where `checkout-index
+            // --stage=1` finds no base. Treat it as absent instead of a path to
+            // an empty filename, which would fail input validation (exit 3).
+            "--base" => {
+                let value = take_value("--base")?;
+                base = if value.trim().is_empty() {
+                    None
+                } else {
+                    Some(PathBuf::from(value))
+                };
+            }
             "--current" | "--local" => current = Some(PathBuf::from(take_value(arg)?)),
             "--incoming" | "--remote" => incoming = Some(PathBuf::from(take_value(arg)?)),
             "--result" | "--merged" => result = Some(PathBuf::from(take_value(arg)?)),
@@ -251,6 +262,22 @@ mod tests {
                 assert_eq!(args.current.to_str().unwrap(), "c.txt");
                 assert_eq!(args.incoming.to_str().unwrap(), "i.txt");
                 assert_eq!(args.result.to_str().unwrap(), "r.txt");
+            }
+            other => panic!("expected merge, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn empty_base_is_treated_as_absent() {
+        // Fork passes `--base ""` for add/add conflicts (no common ancestor).
+        let cmd = parse(&v(&[
+            "--base", "", "--local", "c.txt", "--remote", "i.txt", "--merged", "r.txt",
+        ]))
+        .unwrap();
+        match cmd {
+            CliCommand::Merge(args) => {
+                assert!(args.base.is_none(), "empty --base must become None");
+                assert_eq!(args.current.to_str().unwrap(), "c.txt");
             }
             other => panic!("expected merge, got {other:?}"),
         }

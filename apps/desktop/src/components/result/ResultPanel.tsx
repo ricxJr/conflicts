@@ -40,6 +40,8 @@ export function ResultPanel() {
     if (!containerRef.current) return;
     const editor = monaco.editor.create(containerRef.current, {
       automaticLayout: true,
+      // Tab width is owned by applyTabWidth; keep Monaco from re-guessing it.
+      detectIndentation: false,
       minimap: { enabled: showResultMinimap },
       scrollBeyondLastLine: false,
       renderWhitespace: renderWhitespace ? "all" : "none",
