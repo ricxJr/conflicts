@@ -148,6 +148,27 @@ pub fn open_merge_session(state: State<AppState>) -> Result<OpenSessionOutput, B
         git.as_ref().map(|g| g.operation.as_str()).unwrap_or("none")
     ));
 
+    // Single-file launches point current/incoming/result at the same
+    // conflicted file. When that file is an unmerged path in a git repo, pull
+    // the real three-way inputs (base/ours/theirs) from the index so a file
+    // opened directly (Explorer / "Open with") analyzes identically to a
+    // mergetool launch. Otherwise leave the three inputs equal and let the
+    // frontend rebuild the sides from the conflict markers.
+    let (base, current, incoming) = if cli.single_file {
+        match git::read_index_stages(cli.repo.as_deref(), &cli.result) {
+            Some(stages) if stages.current.is_some() || stages.incoming.is_some() => (
+                stages
+                    .base
+                    .map(|b| files::snapshot_from_bytes(&cli.result, &b)),
+                files::snapshot_from_bytes(&cli.result, stages.current.as_deref().unwrap_or(&[])),
+                files::snapshot_from_bytes(&cli.result, stages.incoming.as_deref().unwrap_or(&[])),
+            ),
+            _ => (base, current, incoming),
+        }
+    } else {
+        (base, current, incoming)
+    };
+
     Ok(OpenSessionOutput {
         cli: CliContextDto {
             base_path: cli.base.as_ref().map(|p| p.display().to_string()),

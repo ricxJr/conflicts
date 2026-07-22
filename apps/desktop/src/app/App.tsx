@@ -11,11 +11,12 @@ import { ResultPanel } from "../components/result/ResultPanel";
 import { ConflictList } from "../components/conflicts/ConflictList";
 import { CommandPalette } from "../components/commands/CommandPalette";
 import { SettingsPanel } from "../components/settings/SettingsPanel";
+import { CommitDiffModal } from "../components/diff/CommitDiffModal";
 import { DialogHost } from "../components/dialogs/DialogHost";
 import { useShortcuts } from "../features/shortcuts";
 import { attachScrollSync } from "../features/scrollSync";
 import { attachPanelAlignment } from "../features/panelAlignment";
-import { commitUrl } from "../features/commitLink";
+import { applyWindowStartMode } from "../services/backend";
 
 export function App() {
   const { t } = useTranslation();
@@ -37,6 +38,11 @@ export function App() {
   useEffect(() => {
     applyTheme(prefs);
   }, [prefs.theme, prefs.customTheme, prefs.uiFontFamily, prefs.uiFontSize]);
+
+  // Apply the window mode preference on startup and whenever it changes.
+  useEffect(() => {
+    void applyWindowStartMode(prefs.windowStartMode);
+  }, [prefs.windowStartMode]);
 
   // Attach scroll sync and cross-panel alignment after the editors exist.
   useEffect(() => {
@@ -106,24 +112,23 @@ export function App() {
   const { files, cli, git } = session;
   const baseContent = files.base?.content ?? "";
   // Prefer the detected branch name over CLI labels like HEAD/CURRENT.
-  const currentLabel = git?.currentBranch ?? cli.currentLabel ?? "CURRENT";
-  const incomingLabel = git?.incomingBranch ?? cli.incomingLabel ?? "INCOMING";
-  const currentCommitHref = commitUrl(git?.remoteUrl, git?.currentCommit?.sha);
-  const incomingCommitHref = commitUrl(git?.remoteUrl, git?.incomingCommit?.sha);
+  const currentLabel = git?.currentBranch ?? cli.currentLabel ?? t("marker.current");
+  const incomingLabel = git?.incomingBranch ?? cli.incomingLabel ?? t("marker.incoming");
 
-  const topRow = (
-    <div className="top-row">
-      <DiffPanel
-        side="left"
-        title={t("panel.currentVsBase", { label: currentLabel })}
-        roleLabel={t("panel.sideCurrent")}
-        baseContent={baseContent}
-        sideContent={files.current.content}
-        fileName={files.result.fileName}
-        filePath={files.current.path}
-        commit={git?.currentCommit}
-        commitHref={currentCommitHref}
-      />
+  const leftPanel = (
+    <DiffPanel
+      side="left"
+      branchLabel={currentLabel}
+      roleLabel={t("panel.sideCurrent")}
+      baseContent={baseContent}
+      sideContent={files.current.content}
+      fileName={files.result.fileName}
+      filePath={files.current.path}
+      commit={git?.currentCommit}
+    />
+  );
+  const rightGroup = (
+    <div className="top-row-rest">
       {prefs.showBasePanel && files.base && (
         <BaseViewer
           content={baseContent}
@@ -133,16 +138,25 @@ export function App() {
       )}
       <DiffPanel
         side="right"
-        title={t("panel.incomingVsBase", { label: incomingLabel })}
+        branchLabel={incomingLabel}
         roleLabel={t("panel.sideIncoming")}
         baseContent={baseContent}
         sideContent={files.incoming.content}
         fileName={files.result.fileName}
         filePath={files.incoming.path}
         commit={git?.incomingCommit}
-        commitHref={incomingCommitHref}
       />
     </div>
+  );
+  const topRow = (
+    <SplitPane
+      direction="horizontal"
+      className="top-row-split"
+      ratio={prefs.diffSplitRatio}
+      onRatioChange={(r) => setPrefs({ diffSplitRatio: r })}
+      first={leftPanel}
+      second={rightGroup}
+    />
   );
 
   return (
@@ -161,6 +175,7 @@ export function App() {
       <StatusBar />
       <CommandPalette />
       <SettingsPanel />
+      <CommitDiffModal />
       <DialogHost />
     </div>
   );

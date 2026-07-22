@@ -1,15 +1,15 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { monaco, detectLanguage, lineNumberGutterChars } from "../../editor/monaco";
+import { monaco, detectLanguage, lineNumberGutterChars, applyTabWidth } from "../../editor/monaco";
 import { editors } from "../../stores/controllers";
 import { useSession } from "../../stores/session";
 import { modifiedLineToBase } from "../../features/diffGeometry";
-import { openExternal } from "../../services/backend";
 import type { CommitInfo } from "../../types/session";
 
 interface DiffPanelProps {
   side: "left" | "right";
-  title: string;
+  /** Branch/label of this side, shown compared against BASE in the header. */
+  branchLabel: string;
   /** Small badge naming the side's role (Current/Incoming). */
   roleLabel: string;
   baseContent: string;
@@ -18,8 +18,6 @@ interface DiffPanelProps {
   filePath: string;
   /** Commit backing this side, when git could resolve it. */
   commit?: CommitInfo;
-  /** Web URL to open the commit, when the remote host is recognized. */
-  commitHref?: string | null;
 }
 
 /** Ignore clicks on scrollbars/rulers; anything with a position is fair game. */
@@ -33,16 +31,16 @@ function isNavigableTarget(target: monaco.editor.IMouseTarget): boolean {
 /** Read-only Monaco diff editor: original = BASE, modified = CURRENT/INCOMING. */
 export function DiffPanel({
   side,
-  title,
+  branchLabel,
   roleLabel,
   baseContent,
   sideContent,
   fileName,
   filePath,
   commit,
-  commitHref,
 }: DiffPanelProps) {
   const { t } = useTranslation();
+  const openCommitDiff = useSession((s) => s.openCommitDiff);
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(null);
   const hideUnchanged = useSession((s) => s.prefs.hideUnchangedRegions);
@@ -50,12 +48,17 @@ export function DiffPanel({
   const showConflictList = useSession((s) => s.prefs.showConflictList);
   const editorFontFamily = useSession((s) => s.prefs.editorFontFamily);
   const editorFontSize = useSession((s) => s.prefs.editorFontSize);
+  const renderWhitespace = useSession((s) => s.prefs.renderWhitespace);
+  const tabSize = useSession((s) => s.prefs.tabSize);
+  const tabSizeOverrides = useSession((s) => s.prefs.tabSizeOverrides);
 
   useEffect(() => {
     if (!containerRef.current) return;
     const language = detectLanguage(fileName);
     const original = monaco.editor.createModel(baseContent, language);
     const modified = monaco.editor.createModel(sideContent, language);
+    applyTabWidth(original, fileName, { tabSize, tabSizeOverrides });
+    applyTabWidth(modified, fileName, { tabSize, tabSizeOverrides });
 
     const editor = monaco.editor.createDiffEditor(containerRef.current, {
       readOnly: true,
@@ -67,6 +70,7 @@ export function DiffPanel({
       scrollBeyondLastLine: false,
       renderOverviewRuler: true,
       diffWordWrap: "off",
+      renderWhitespace: renderWhitespace ? "all" : "none",
       fontSize: editorFontSize,
       fontFamily: editorFontFamily || undefined,
       lineNumbersMinChars: lineNumberGutterChars(
@@ -112,10 +116,26 @@ export function DiffPanel({
       renderSideBySide: !showConflictList,
       useInlineViewWhenSpaceIsLimited: false,
       hideUnchangedRegions: { enabled: hideUnchanged },
+      renderWhitespace: renderWhitespace ? "all" : "none",
       fontSize: editorFontSize,
       fontFamily: editorFontFamily || undefined,
     });
-  }, [hideUnchanged, ignoreWhitespace, showConflictList, editorFontSize, editorFontFamily]);
+    const models = editorRef.current?.getModel();
+    if (models) {
+      applyTabWidth(models.original, fileName, { tabSize, tabSizeOverrides });
+      applyTabWidth(models.modified, fileName, { tabSize, tabSizeOverrides });
+    }
+  }, [
+    hideUnchanged,
+    ignoreWhitespace,
+    showConflictList,
+    editorFontSize,
+    editorFontFamily,
+    renderWhitespace,
+    tabSize,
+    tabSizeOverrides,
+    fileName,
+  ]);
 
   const commitBody = commit && (
     <>
@@ -129,30 +149,31 @@ export function DiffPanel({
     ? t("panel.commit.tooltip", { sha: commit.sha, subject: commit.subject })
     : undefined;
 
+  const compareAria = t("panel.comparedToBase", { role: roleLabel, label: branchLabel });
+
   return (
-    <section className="panel diff-panel" aria-label={title}>
+    <section className="panel diff-panel" aria-label={compareAria}>
       <header className="panel-header">
         <div className="panel-header-main">
-          <span className="panel-title panel-branch" title={title}>
-            {title}
-          </span>
           <span className={`badge badge-side badge-side-${side}`}>{roleLabel}</span>
-          {commit &&
-            (commitHref ? (
-              <button
-                type="button"
-                className="commit-link"
-                onClick={() => void openExternal(commitHref)}
-                title={commitTooltip}
-                aria-label={t("panel.commit.openCommit", { sha: commit.shortSha })}
-              >
-                {commitBody}
-              </button>
-            ) : (
-              <span className="panel-commit" title={commitTooltip}>
-                {commitBody}
-              </span>
-            ))}
+          <span className="panel-compare" title={compareAria}>
+            <span className={`compare-branch compare-branch-${side}`}>{branchLabel}</span>
+            <span className="compare-vs" aria-hidden>
+              ⟷
+            </span>
+            <span className="compare-base">{t("panel.baseLabel")}</span>
+          </span>
+          {commit && (
+            <button
+              type="button"
+              className="commit-link"
+              onClick={() => openCommitDiff(commit, side)}
+              title={commitTooltip}
+              aria-label={t("panel.commit.openCommit", { sha: commit.shortSha })}
+            >
+              {commitBody}
+            </button>
+          )}
         </div>
         <span className="panel-path" title={filePath}>
           {filePath}

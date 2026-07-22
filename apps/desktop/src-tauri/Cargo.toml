@@ -1,6 +1,6 @@
 [package]
 name = "mergescope"
-version = "1.0.0"
+version = "1.0.1"
 description = "MergeScope — visual Git merge conflict resolution against the common ancestor"
 authors = ["MergeScope"]
 edition = "2021"
@@ -12,6 +12,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
+tauri-plugin-window-state = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"

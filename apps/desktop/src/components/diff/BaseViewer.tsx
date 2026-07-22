@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { monaco, detectLanguage, lineNumberGutterChars } from "../../editor/monaco";
+import { monaco, detectLanguage, lineNumberGutterChars, applyTabWidth } from "../../editor/monaco";
 import { useSession } from "../../stores/session";
 
 interface BaseViewerProps {
@@ -16,16 +16,21 @@ export function BaseViewer({ content, fileName, filePath }: BaseViewerProps) {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const editorFontFamily = useSession((s) => s.prefs.editorFontFamily);
   const editorFontSize = useSession((s) => s.prefs.editorFontSize);
+  const renderWhitespace = useSession((s) => s.prefs.renderWhitespace);
+  const tabSize = useSession((s) => s.prefs.tabSize);
+  const tabSizeOverrides = useSession((s) => s.prefs.tabSizeOverrides);
 
   useEffect(() => {
     if (!containerRef.current) return;
     const model = monaco.editor.createModel(content, detectLanguage(fileName));
+    applyTabWidth(model, fileName, { tabSize, tabSizeOverrides });
     const editor = monaco.editor.create(containerRef.current, {
       model,
       readOnly: true,
       automaticLayout: true,
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
+      renderWhitespace: renderWhitespace ? "all" : "none",
       fontSize: editorFontSize,
       fontFamily: editorFontFamily || undefined,
       lineNumbersMinChars: lineNumberGutterChars(model.getLineCount()),
@@ -39,10 +44,13 @@ export function BaseViewer({ content, fileName, filePath }: BaseViewerProps) {
 
   useEffect(() => {
     editorRef.current?.updateOptions({
+      renderWhitespace: renderWhitespace ? "all" : "none",
       fontSize: editorFontSize,
       fontFamily: editorFontFamily || undefined,
     });
-  }, [editorFontSize, editorFontFamily]);
+    const model = editorRef.current?.getModel();
+    if (model) applyTabWidth(model, fileName, { tabSize, tabSizeOverrides });
+  }, [editorFontSize, editorFontFamily, renderWhitespace, tabSize, tabSizeOverrides, fileName]);
 
   return (
     <section className="panel base-panel" aria-label={t("panel.baseAria")}>

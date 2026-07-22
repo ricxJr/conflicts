@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useSession } from "../../stores/session";
 import type { ThemeName } from "../../types/session";
 import { effectiveKeybindings, formatChord } from "../../features/keybindings";
+import { Select } from "../common/Select";
 
 const THEMES: ThemeName[] = ["dark", "light", "system", "high-contrast", "custom"];
 
@@ -57,6 +58,14 @@ export function TopBar() {
           />
           {t("topbar.ignoreWs")}
         </label>
+        <label className="toggle" title={t("topbar.renderWsTitle")}>
+          <input
+            type="checkbox"
+            checked={prefs.renderWhitespace}
+            onChange={(e) => setPrefs({ renderWhitespace: e.target.checked })}
+          />
+          {t("topbar.renderWs")}
+        </label>
         <label className="toggle" title={t("topbar.baseTitle")}>
           <input
             type="checkbox"
@@ -73,18 +82,13 @@ export function TopBar() {
           />
           {t("topbar.list")}
         </label>{" "}
-        <select
+        <Select
           className="theme-select"
           value={prefs.theme}
-          aria-label={t("topbar.themeLabel")}
-          onChange={(e) => setPrefs({ theme: e.target.value as ThemeName })}
-        >
-          {THEMES.map((th) => (
-            <option key={th} value={th}>
-              {t(`theme.${th}`)}
-            </option>
-          ))}
-        </select>
+          ariaLabel={t("topbar.themeLabel")}
+          options={THEMES.map((th) => ({ value: th, label: t(`theme.${th}`) }))}
+          onChange={(value) => setPrefs({ theme: value as ThemeName })}
+        />
         <button
           className="palette-button"
           onClick={() => setPaletteOpen(true)}

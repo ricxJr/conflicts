@@ -14,18 +14,28 @@
       "noMarkers": "\"{{file}}\" não contém marcadores de conflito."
     }
   },
+  "marker": {
+    "current": "ATUAL",
+    "incoming": "RECEBIDO"
+  },
   "panel": {
     "currentVsBase": "{{label}} vs BASE",
     "incomingVsBase": "BASE vs {{label}}",
     "sideCurrent": "Atual",
     "sideIncoming": "Recebido",
+    "baseLabel": "BASE",
+    "comparedToBase": "{{role}}: {{label}} comparado à BASE",
     "baseAria": "Base (ancestral comum)",
     "mergedResult": "Resultado do merge",
     "commit": {
       "authoredBy": "por {{author}}",
-      "openCommit": "Abrir o commit {{sha}} no navegador",
+      "openCommit": "Ver o diff do commit {{sha}}",
+      "openCommitBrowser": "Abrir o commit {{sha}} no navegador",
       "tooltip": "{{sha}}\n{{subject}}"
     }
+  },
+  "commitDiff": {
+    "title": "Diff do commit {{sha}}"
   },
   "topbar": {
     "resolved": "{{resolved}}/{{total}} resolvidos",
@@ -33,6 +43,8 @@
     "changesOnlyTitle": "Recolher regiões inalteradas nos painéis de diff",
     "ignoreWs": "Ignorar espaços",
     "ignoreWsTitle": "Ignorar diferenças só de espaços em branco",
+    "renderWs": "Espaços/Tabs",
+    "renderWsTitle": "Mostrar marcas de espaço em branco (· para espaço, → para tab)",
     "base": "Base",
     "baseTitle": "Fixar o arquivo base como um terceiro painel",
     "list": "Lista",
@@ -73,7 +85,8 @@
     "prev": "Conflito anterior",
     "next": "Próximo conflito",
     "statusTitle": "Situação: {{status}}",
-    "bothOrder": "Ambos: escolher a ordem"
+    "bothOrder": "Ambos: escolher a ordem",
+    "conflictCounter": "Posição entre os conflitos reais (alterações independentes são ignoradas)"
   },
   "classification": {
     "independent": "Alterações independentes",
@@ -171,6 +184,7 @@
     "toggle-list": "Alternar lista de conflitos",
     "toggle-changes-only": "Alternar visão só de alterações",
     "toggle-whitespace": "Alternar ignorar espaços em branco",
+    "toggle-render-whitespace": "Alternar marcas de espaço em branco",
     "theme-dark": "Tema: Escuro",
     "theme-light": "Tema: Claro",
     "theme-system": "Tema: Sistema",
@@ -191,6 +205,29 @@
       "shortcuts": "Atalhos"
     },
     "theme": "Tema",
+    "editor": "Editor",
+    "resultMinimap": "Mostrar minimapa no editor do resultado",
+    "renderWhitespace": "Mostrar marcas de espaço em branco (· espaço, → tab)",
+    "tabSize": "Largura padrão do tab",
+    "tabSizeOverrides": "Largura do tab por tipo de arquivo",
+    "tabSizeAdd": "Adicionar",
+    "tabSizeHint": "Arquivos com essas extensões usam a própria largura de tab; os demais usam o padrão.",
+    "tabSizeExtPlaceholder": "ex.: mac",
+    "tabSizeExtAria": "Extensão do arquivo",
+    "tabSizeValueAria": "Largura do tab",
+    "tabSizeRemove": "Remover",
+    "window": "Janela",
+    "windowMode": "Abrir janela como",
+    "windowModeOption": {
+      "default": "Padrão",
+      "maximized": "Tela cheia",
+      "fullscreen": "FullScreen"
+    },
+    "windowModeHint": {
+      "default": "A janela reabre na última posição e tamanho.",
+      "maximized": "A janela ocupa toda a tela, mantendo a barra de título.",
+      "fullscreen": "Tela cheia real, sem bordas nem barra de título."
+    },
     "customColors": "Cores personalizadas",
     "restoreDefaults": "Restaurar padrões",
     "color": {

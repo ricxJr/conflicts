@@ -103,6 +103,10 @@ fn main() {
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        // Remember the window's last position/size/maximized state across
+        // launches (market-standard behavior). First run falls back to the
+        // geometry in tauri.conf.json (centered 1400x900).
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
             commands::get_launch_context,

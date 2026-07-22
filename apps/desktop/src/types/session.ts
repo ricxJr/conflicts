@@ -97,6 +97,13 @@ export interface BackendError {
 
 export type ThemeName = "dark" | "light" | "system" | "high-contrast" | "custom";
 export type Language = "en" | "pt-br";
+/**
+ * How the app window opens:
+ * - "default": restore the last size/position (window-state plugin);
+ * - "maximized": fill the work area, keeping the title bar (tela cheia);
+ * - "fullscreen": true OS fullscreen with no window chrome.
+ */
+export type WindowStartMode = "default" | "maximized" | "fullscreen";
 
 /** Every color token the UI and editors expose for the "custom" theme. */
 export interface CustomTheme {
@@ -158,9 +165,28 @@ export interface Preferences {
   conflictListCollapsed: boolean;
   hideUnchangedRegions: boolean;
   ignoreWhitespace: boolean;
+  /** Render whitespace glyphs (· for spaces, → for tabs) in every editor. */
+  renderWhitespace: boolean;
+  /** Default tab width (columns) for files without a per-extension override. */
+  tabSize: number;
+  /**
+   * Per-extension tab-width overrides. Keys are lowercase extensions without
+   * the dot (e.g. "mac", "cls"); the value wins over `tabSize` for that type.
+   * User-owned: it replaces the default map wholesale when persisted, so an
+   * extension the user removed here stays removed.
+   */
+  tabSizeOverrides: Record<string, number>;
+  showResultMinimap: boolean;
   createBackup: boolean;
   topPanelRatio: number;
   resultPanelRatio: number;
+  /** Horizontal split between the Current panel and the rest of the diff row. */
+  diffSplitRatio: number;
+  /** Persisted size (px) of the single-side commit diff viewer, so it sticks. */
+  commitDiffWidth: number;
+  commitDiffHeight: number;
+  /** How the window opens: last size, maximized, or true fullscreen. */
+  windowStartMode: WindowStartMode;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -178,7 +204,15 @@ export const DEFAULT_PREFERENCES: Preferences = {
   conflictListCollapsed: false,
   hideUnchangedRegions: false,
   ignoreWhitespace: false,
+  renderWhitespace: false,
+  tabSize: 4,
+  tabSizeOverrides: { mac: 10, cls: 10 },
+  showResultMinimap: true,
   createBackup: false,
   topPanelRatio: 0.5,
   resultPanelRatio: 0.45,
+  diffSplitRatio: 0.5,
+  commitDiffWidth: 1100,
+  commitDiffHeight: 720,
+  windowStartMode: "default",
 };

@@ -61,6 +61,72 @@ fn git_stdout(cwd: &Path, args: &[&str]) -> Option<String> {
     }
 }
 
+/// Raw stdout bytes of a git command, without trimming — used to read blob
+/// contents verbatim (an empty blob yields `Some(vec![])`). None when git
+/// fails to run or exits non-zero.
+fn git_output_bytes(cwd: &Path, args: &[&str]) -> Option<Vec<u8>> {
+    let output = git_command(cwd).args(args).output().ok()?;
+    output.status.success().then_some(output.stdout)
+}
+
+/// The three merge stages of a conflicted path, read from the index:
+/// stage 1 = base (common ancestor), 2 = ours/current, 3 = theirs/incoming.
+#[derive(Debug, Default)]
+pub struct IndexStages {
+    pub base: Option<Vec<u8>>,
+    pub current: Option<Vec<u8>>,
+    pub incoming: Option<Vec<u8>>,
+}
+
+/// Reads the unmerged index stages for `file_path`, so a file opened directly
+/// (Explorer / "Open with") can be analyzed with the same real three-way
+/// inputs a mergetool launch receives, instead of rebuilding sides from the
+/// two-way conflict markers.
+///
+/// Returns None when the path has no unmerged entry (not mid-conflict, already
+/// `git add`ed, or outside a repo). Individual stages can be absent: an add/add
+/// conflict has no base (stage 1), and a delete/modify drops the deleted side.
+pub fn read_index_stages(repo_hint: Option<&Path>, file_path: &Path) -> Option<IndexStages> {
+    let cwd: PathBuf = file_path
+        .parent()
+        .map(Path::to_path_buf)
+        .filter(|p| p.is_dir())
+        .or_else(|| repo_hint.map(Path::to_path_buf))?;
+    let name = file_path.file_name()?.to_string_lossy().into_owned();
+
+    // `-u` lists only unmerged entries; `-z` keeps paths intact. Each record is
+    // "<mode> <sha> <stage>\t<path>\0". The pathspec is anchored to `cwd`, so
+    // passing the bare file name matches exactly this file.
+    let raw = git_output_bytes(&cwd, &["ls-files", "-u", "-z", "--", name.as_str()])?;
+    if raw.is_empty() {
+        return None;
+    }
+
+    let mut stages = IndexStages::default();
+    let mut found = false;
+    for record in raw.split(|&b| b == 0).filter(|r| !r.is_empty()) {
+        // Keep only "<mode> <sha> <stage>" — everything before the TAB.
+        let head = match record.iter().position(|&b| b == b'\t') {
+            Some(tab) => &record[..tab],
+            None => record,
+        };
+        let head = String::from_utf8_lossy(head);
+        let mut fields = head.split_whitespace();
+        let _mode = fields.next();
+        let Some(sha) = fields.next() else { continue };
+        let stage = fields.next().and_then(|s| s.parse::<u8>().ok());
+        let slot = match stage {
+            Some(1) => &mut stages.base,
+            Some(2) => &mut stages.current,
+            Some(3) => &mut stages.incoming,
+            _ => continue,
+        };
+        *slot = git_output_bytes(&cwd, &["cat-file", "blob", sha]);
+        found = true;
+    }
+    found.then_some(stages)
+}
+
 /// Detects the in-progress operation by inspecting the git dir
 /// (works with worktrees, where `.git` is a file pointing at the real gitdir).
 fn detect_operation(git_dir: &Path) -> &'static str {
@@ -320,6 +386,34 @@ mod tests {
         assert_ne!(current.sha, incoming.sha);
         // Local test repo has no remote, so no web link can be built.
         assert!(ctx.remote_url.is_none());
+
+        // The conflicted file is unmerged: the three index stages carry the
+        // real base/ours/theirs contents (what a mergetool would receive).
+        let stages = read_index_stages(Some(&dir), &dir.join("f.txt")).expect("index stages");
+        assert_eq!(stages.base.as_deref(), Some(&b"base\n"[..]));
+        assert_eq!(stages.current.as_deref(), Some(&b"main\n"[..]));
+        assert_eq!(stages.incoming.as_deref(), Some(&b"feature\n"[..]));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_index_stages_none_without_conflict() {
+        if Command::new("git").arg("--version").output().is_err() {
+            return;
+        }
+        let dir = std::env::temp_dir().join(format!("mergescope-stages-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        assert!(git_ok(&dir, &["init", "-b", "main"]));
+        assert!(git_ok(&dir, &["config", "user.name", "t"]));
+        assert!(git_ok(&dir, &["config", "user.email", "t@t"]));
+        fs::write(dir.join("f.txt"), "clean\n").unwrap();
+        assert!(git_ok(&dir, &["add", "."]));
+        assert!(git_ok(&dir, &["commit", "-m", "clean"]));
+
+        // Committed, no merge in progress: the path has no unmerged stages.
+        assert!(read_index_stages(Some(&dir), &dir.join("f.txt")).is_none());
 
         let _ = fs::remove_dir_all(&dir);
     }

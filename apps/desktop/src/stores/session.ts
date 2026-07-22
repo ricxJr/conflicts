@@ -6,6 +6,7 @@ import {
   isConflicting,
   joinLines,
   normalizeEol,
+  parseConflictMarkers,
   reconstructSides,
   resolutionOutput,
   splitLines,
@@ -15,7 +16,7 @@ import {
   type Resolution,
   type ResolutionStrategy,
 } from "@mergescope/merge-engine";
-import type { BackendError, OpenSessionOutput, Preferences } from "../types/session";
+import type { BackendError, CommitInfo, OpenSessionOutput, Preferences } from "../types/session";
 import { DEFAULT_PREFERENCES } from "../types/session";
 import * as backend from "../services/backend";
 import { editors, revealBaseLine } from "./controllers";
@@ -56,6 +57,8 @@ interface SessionStore {
   prefs: Preferences;
   paletteOpen: boolean;
   settingsOpen: boolean;
+  /** Commit whose diff is shown in the in-app viewer, plus which side it backs. */
+  commitDiff: { commit: CommitInfo; side: "left" | "right" } | null;
   dialog: DialogState | null;
   cursor: { line: number; column: number };
 
@@ -72,12 +75,16 @@ interface SessionStore {
   activateGroupAtBaseLine(baseLine: number, opts?: RevealOptions): void;
   nextConflict(): void;
   prevConflict(): void;
+  firstConflict(): void;
+  lastConflict(): void;
   onRegionsEdited(changedGroupIds: string[]): void;
   save(closeAfter: boolean): Promise<void>;
   cancel(): void;
   setPrefs(patch: Partial<Preferences>): void;
   setPaletteOpen(open: boolean): void;
   setSettingsOpen(open: boolean): void;
+  openCommitDiff(commit: CommitInfo, side: "left" | "right"): void;
+  closeCommitDiff(): void;
   setDialog(dialog: DialogState | null): void;
   setCursor(line: number, column: number): void;
   rebuildResult(): void;
@@ -85,6 +92,15 @@ interface SessionStore {
 
 function countUnresolved(groups: ConflictGroup[]): number {
   return groups.filter((g) => g.status === "unresolved").length;
+}
+
+/** Indices of the groups that are genuine conflicts (see `isConflicting`). */
+function conflictIndices(groups: ConflictGroup[]): number[] {
+  const indices: number[] = [];
+  groups.forEach((group, i) => {
+    if (isConflicting(group)) indices.push(i);
+  });
+  return indices;
 }
 
 function makeResolution(strategy: ResolutionStrategy, manualLines?: string[]): Resolution {
@@ -102,6 +118,7 @@ export const useSession = create<SessionStore>((set, get) => ({
   prefs: DEFAULT_PREFERENCES,
   paletteOpen: false,
   settingsOpen: false,
+  commitDiff: null,
   dialog: null,
   cursor: { line: 1, column: 1 },
 
@@ -135,8 +152,8 @@ export const useSession = create<SessionStore>((set, get) => ({
         session.files.incoming.content,
       );
       const initialResult = buildResult(analysis.baseLines, analysis.groups, {
-        currentLabel: session.cli.currentLabel ?? "CURRENT",
-        incomingLabel: session.cli.incomingLabel ?? "INCOMING",
+        currentLabel: session.cli.currentLabel ?? i18n.t("marker.current"),
+        incomingLabel: session.cli.incomingLabel ?? i18n.t("marker.incoming"),
       });
       const firstUnresolved = analysis.groups.findIndex((g) => g.status === "unresolved");
       set({
@@ -162,10 +179,10 @@ export const useSession = create<SessionStore>((set, get) => ({
   },
 
   currentLabel() {
-    return get().session?.cli.currentLabel ?? "CURRENT";
+    return get().session?.cli.currentLabel ?? i18n.t("marker.current");
   },
   incomingLabel() {
-    return get().session?.cli.incomingLabel ?? "INCOMING";
+    return get().session?.cli.incomingLabel ?? i18n.t("marker.incoming");
   },
 
   // Marker labels above keep whatever the CLI passed (git semantics); for the
@@ -288,11 +305,32 @@ export const useSession = create<SessionStore>((set, get) => ({
     if (best >= 0 && best !== activeIndex) get().setActiveIndex(best, opts);
   },
 
+  // Navigation targets *real* conflicts only (overlapping / delete-modify /
+  // unknown), regardless of whether they were already resolved — independent
+  // and auto-resolved changes are skipped so the buttons step through the
+  // things that actually needed a decision.
   nextConflict() {
-    get().setActiveIndex(get().activeIndex + 1);
+    const { groups, activeIndex } = get();
+    const indices = conflictIndices(groups);
+    if (indices.length === 0) return;
+    const target = indices.find((i) => i > activeIndex) ?? indices[0];
+    get().setActiveIndex(target);
   },
   prevConflict() {
-    get().setActiveIndex(get().activeIndex - 1);
+    const { groups, activeIndex } = get();
+    const indices = conflictIndices(groups);
+    if (indices.length === 0) return;
+    const target =
+      [...indices].reverse().find((i) => i < activeIndex) ?? indices[indices.length - 1];
+    get().setActiveIndex(target);
+  },
+  firstConflict() {
+    const indices = conflictIndices(get().groups);
+    if (indices.length > 0) get().setActiveIndex(indices[0]);
+  },
+  lastConflict() {
+    const indices = conflictIndices(get().groups);
+    if (indices.length > 0) get().setActiveIndex(indices[indices.length - 1]);
   },
 
   onRegionsEdited(changedGroupIds) {
@@ -390,7 +428,10 @@ export const useSession = create<SessionStore>((set, get) => ({
     set((s) => {
       const prefs = { ...s.prefs, ...patch };
       if (patch.language && patch.language !== s.prefs.language) {
-        void i18n.changeLanguage(patch.language);
+        // Unresolved conflicts already in the result editor embed the
+        // CURRENT/INCOMING fallback marker text baked in at build time, so
+        // switching languages needs an explicit rebuild to retranslate them.
+        void i18n.changeLanguage(patch.language).then(() => get().rebuildResult());
       }
       void backend.savePreferences(prefs);
       return { prefs };
@@ -403,6 +444,14 @@ export const useSession = create<SessionStore>((set, get) => ({
 
   setSettingsOpen(open) {
     set({ settingsOpen: open });
+  },
+
+  openCommitDiff(commit, side) {
+    set({ commitDiff: { commit, side } });
+  },
+
+  closeCommitDiff() {
+    set({ commitDiff: null });
   },
 
   setDialog(dialog) {
@@ -426,14 +475,36 @@ export const useSession = create<SessionStore>((set, get) => ({
 }));
 
 /**
- * Single-file launches (context menu / --file) read one conflicted file; the
- * three merge inputs are rebuilt from its markers so the regular pipeline and
- * panels work unchanged. Marker labels double as CLI labels when absent, and
- * the result keeps pointing at the same file so saving writes back in place.
+ * Single-file launches (context menu / --file) read one conflicted file. When
+ * the file is an unmerged path in a git repo the backend already replaced the
+ * three inputs with the real base/ours/theirs blobs from the index, so the
+ * analysis matches a mergetool launch; here we only lift the marker labels.
+ * Otherwise (opened outside a repo, or already resolved in the index) the
+ * three inputs are still the same file, so we rebuild the sides from its
+ * markers. Either way the result keeps pointing at the same file so saving
+ * writes back in place.
  */
 export function expandSingleFileSession(session: OpenSessionOutput): OpenSessionOutput {
   const result = session.files.result;
   const { lines } = splitLines(normalizeEol(result.content));
+  const first = parseConflictMarkers(lines).regions[0];
+  const cli = {
+    ...session.cli,
+    currentLabel: session.cli.currentLabel ?? first?.currentLabel ?? undefined,
+    incomingLabel: session.cli.incomingLabel ?? first?.incomingLabel ?? undefined,
+  };
+
+  // Real three-way inputs already came from the git index when the sides no
+  // longer match the conflicted file itself (a base was provided, or a side
+  // lost its markers). Keep them and only carry the labels over.
+  const backendProvidedSides =
+    !!session.files.base ||
+    session.files.current.content !== result.content ||
+    session.files.incoming.content !== result.content;
+  if (backendProvidedSides) {
+    return { ...session, cli };
+  }
+
   const sides = reconstructSides(lines);
   if (!sides) {
     throw i18n.t("app.singleFile.noMarkers", { file: result.path });
@@ -441,11 +512,7 @@ export function expandSingleFileSession(session: OpenSessionOutput): OpenSession
   const trailing = result.trailingNewline;
   return {
     ...session,
-    cli: {
-      ...session.cli,
-      currentLabel: session.cli.currentLabel ?? sides.currentLabel,
-      incomingLabel: session.cli.incomingLabel ?? sides.incomingLabel,
-    },
+    cli,
     files: {
       base: { ...result, content: joinLines(sides.baseLines, trailing) },
       current: { ...result, content: joinLines(sides.currentLines, trailing) },

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { isConflicting } from "@mergescope/merge-engine";
 import { useSession } from "../src/stores/session";
 import { editors, type ResultController } from "../src/stores/controllers";
 
@@ -75,13 +76,40 @@ describe("session store", () => {
     expect(controller.regions.get(target.id)?.[0]).toMatch(/^<{7}/);
   });
 
-  it("navigation wraps around the group list", () => {
+  it("navigation visits only real conflicts and wraps around them", () => {
     const s = useSession.getState();
-    s.setActiveIndex(s.groups.length - 1);
+    const conflicts = s.groups.map((g, i) => (isConflicting(g) ? i : -1)).filter((i) => i >= 0);
+    expect(conflicts.length).toBeGreaterThan(0);
+
+    // Land on the last conflict, then next wraps to the first conflict.
+    s.setActiveIndex(conflicts[conflicts.length - 1]);
     useSession.getState().nextConflict();
-    expect(useSession.getState().activeIndex).toBe(0);
+    expect(useSession.getState().activeIndex).toBe(conflicts[0]);
+    // prev from the first conflict wraps back to the last.
     useSession.getState().prevConflict();
-    expect(useSession.getState().activeIndex).toBe(s.groups.length - 1);
+    expect(useSession.getState().activeIndex).toBe(conflicts[conflicts.length - 1]);
+
+    // Whatever the navigation lands on is always a real conflict, never an
+    // independent/auto-resolved change.
+    useSession.getState().firstConflict();
+    expect(isConflicting(useSession.getState().groups[useSession.getState().activeIndex])).toBe(
+      true,
+    );
+    expect(useSession.getState().activeIndex).toBe(conflicts[0]);
+    useSession.getState().lastConflict();
+    expect(useSession.getState().activeIndex).toBe(conflicts[conflicts.length - 1]);
+  });
+
+  it("navigation skips non-conflict groups", () => {
+    const s = useSession.getState();
+    // Only meaningful when the demo actually has a non-conflict group.
+    const hasNonConflict = s.groups.some((g) => !isConflicting(g));
+    if (!hasNonConflict) return;
+
+    s.setActiveIndex(0);
+    useSession.getState().nextConflict();
+    const landed = useSession.getState().groups[useSession.getState().activeIndex];
+    expect(isConflicting(landed)).toBe(true);
   });
 
   it("manual edits with markers keep the group unresolved", () => {

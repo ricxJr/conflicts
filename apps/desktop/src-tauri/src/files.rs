@@ -42,27 +42,38 @@ pub fn read_snapshot(path: &Path) -> Result<(FileSnapshot, WriteMeta, DecodedFil
     let bytes = std::fs::read(path)
         .map_err(|e| format!("cannot read '{}': {e}", path.display()))?;
     let decoded = encoding::decode(&bytes);
+    let snapshot = build_snapshot(path, &bytes, &decoded);
+    let meta = WriteMeta {
+        encoding: decoded.encoding,
+        write_eol: decoded.write_eol,
+    };
+    Ok((snapshot, meta, decoded))
+}
+
+/// Builds a snapshot from in-memory bytes (e.g. a git blob read from the
+/// index) using the same decoding as an on-disk read. `path` supplies the
+/// display path and file name.
+pub fn snapshot_from_bytes(path: &Path, bytes: &[u8]) -> FileSnapshot {
+    let decoded = encoding::decode(bytes);
+    build_snapshot(path, bytes, &decoded)
+}
+
+fn build_snapshot(path: &Path, bytes: &[u8], decoded: &DecodedFile) -> FileSnapshot {
     let file_name = path
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| path.display().to_string());
-
-    let snapshot = FileSnapshot {
+    FileSnapshot {
         path: path.display().to_string(),
         file_name,
         content: decoded.content.clone(),
         encoding: decoded.encoding,
         eol: decoded.eol,
         trailing_newline: decoded.trailing_newline,
-        hash: hash_bytes(&bytes),
+        hash: hash_bytes(bytes),
         size_bytes: bytes.len() as u64,
         had_decode_errors: decoded.had_decode_errors,
-    };
-    let meta = WriteMeta {
-        encoding: decoded.encoding,
-        write_eol: decoded.write_eol,
-    };
-    Ok((snapshot, meta, decoded))
+    }
 }
 
 /// Startup check for `--file` launches: true when the file contains both a
@@ -153,6 +164,22 @@ mod tests {
         assert_eq!(snap.size_bytes, 14);
         assert_eq!(snap.hash.len(), 64);
         std::fs::remove_file(path).ok();
+    }
+
+    #[test]
+    fn snapshot_from_bytes_decodes_like_disk() {
+        let snap = snapshot_from_bytes(Path::new("C:/repo/other.py"), b"hello\r\nworld\r\n");
+        assert_eq!(snap.file_name, "other.py");
+        assert_eq!(snap.eol, Eol::Crlf);
+        assert_eq!(snap.content, "hello\nworld\n");
+        assert_eq!(snap.size_bytes, 14);
+        assert_eq!(snap.hash.len(), 64);
+        assert!(!snap.had_decode_errors);
+
+        // An empty blob (an added/deleted side) is a valid, empty snapshot.
+        let empty = snapshot_from_bytes(Path::new("other.py"), b"");
+        assert_eq!(empty.content, "");
+        assert_eq!(empty.size_bytes, 0);
     }
 
     #[test]
