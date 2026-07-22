@@ -1,0 +1,108 @@
+name: Build Windows
+
+# Reusable workflow: runs the quality gate, builds the Windows executables and
+# attaches them to an existing GitHub Release. It is called both by the final
+# release workflow (release.yml) and by the automatic beta workflow
+# (beta-release.yml) so the build logic lives in a single place.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref (tag or SHA) to check out and build.
+        required: true
+        type: string
+      tag:
+        description: Release tag to stamp into the build and to attach the assets to.
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Test, build and publish
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out the requested ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run TypeScript tests
+        run: npm test
+
+      - name: Run Rust tests
+        working-directory: apps/desktop/src-tauri
+        run: cargo test --locked
+
+      - name: Apply the tag version to the build
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          $version = $env:RELEASE_TAG -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') {
+            throw "The release tag '$env:RELEASE_TAG' must use semantic versioning, for example v1.2.3."
+          }
+
+          $tauriConfigPath = 'apps/desktop/src-tauri/tauri.conf.json'
+          $tauriConfig = Get-Content $tauriConfigPath -Raw | ConvertFrom-Json
+          $tauriConfig.version = $version
+          $tauriConfig | ConvertTo-Json -Depth 100 | Set-Content $tauriConfigPath -Encoding utf8
+
+          $cargoManifestPath = 'apps/desktop/src-tauri/Cargo.toml'
+          $cargoManifest = Get-Content $cargoManifestPath -Raw
+          $cargoManifest = $cargoManifest -replace '(?m)^(version\s*=\s*")[^"]+("\s*)$', "`${1}$version`${2}"
+          Set-Content $cargoManifestPath $cargoManifest -Encoding utf8
+
+      - name: Build Windows executables
+        run: npm run tauri build --workspace @mergescope/desktop -- --target x86_64-pc-windows-msvc
+
+      - name: Attach executables to the GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          $portable = 'apps/desktop/src-tauri/target/x86_64-pc-windows-msvc/release/mergescope.exe'
+          $installers = @(Get-ChildItem 'apps/desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis' -Filter '*.exe')
+
+          if (-not (Test-Path $portable)) {
+            throw "Portable executable was not generated at $portable."
+          }
+          if ($installers.Count -eq 0) {
+            throw 'The NSIS installer was not generated.'
+          }
+
+          $portableAsset = "MergeScope-$env:RELEASE_TAG-portable.exe"
+          Copy-Item $portable $portableAsset
+          $assets = @($portableAsset) + @($installers.FullName)
+          gh release upload $env:RELEASE_TAG @assets --clobber

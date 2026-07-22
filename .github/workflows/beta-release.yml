@@ -1,0 +1,122 @@
+name: Beta Release
+
+# Runs on every push to main (i.e. whenever a PR is merged). It:
+#   1. publishes a beta pre-release for the current version (e.g. v1.1.1-beta.1);
+#   2. builds and attaches the Windows binaries to that pre-release;
+#   3. bumps main to the next patch version so the next contributor already
+#      starts from the correct upcoming release.
+#
+# The bump commit carries "[skip ci]" so it does NOT re-trigger this workflow
+# (or CI), avoiding an infinite loop.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: beta-release
+  cancel-in-progress: false
+
+jobs:
+  publish-beta:
+    name: Publish the beta pre-release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.beta.outputs.tag }}
+    steps:
+      - name: Check out the merge commit with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute the beta tag and publish the pre-release
+        id: beta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          version="$(node -p "require('./package.json').version")"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "The version in package.json ('$version') must be a clean X.Y.Z before a beta can be built." >&2
+            exit 1
+          fi
+
+          git fetch --tags --force
+          escaped="${version//./\\.}"
+          last="$(git tag --list "v${version}-beta.*" \
+            | sed -E "s/^v${escaped}-beta\.//" \
+            | grep -E '^[0-9]+$' \
+            | sort -n \
+            | tail -n1 || true)"
+          if [[ -z "${last}" ]]; then
+            next=1
+          else
+            next=$((last + 1))
+          fi
+
+          betaTag="v${version}-beta.${next}"
+          echo "Publishing ${betaTag} at ${GITHUB_SHA}"
+          gh release create "${betaTag}" \
+            --target "${GITHUB_SHA}" \
+            --prerelease \
+            --title "MergeScope ${betaTag}" \
+            --notes "Beta automático gerado a partir do commit ${GITHUB_SHA} na branch main."
+
+          echo "tag=${betaTag}" >> "$GITHUB_OUTPUT"
+
+  build-beta:
+    name: Build and attach the beta binaries
+    needs: publish-beta
+    uses: ./.github/workflows/build-windows.yml
+    with:
+      ref: ${{ needs.publish-beta.outputs.tag }}
+      tag: ${{ needs.publish-beta.outputs.tag }}
+
+  bump-next:
+    name: Bump main to the next patch version
+    needs: publish-beta
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Bump the version in every manifest and push
+        run: |
+          set -euo pipefail
+
+          current="$(node -p "require('./package.json').version")"
+          if [[ ! "$current" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Cannot bump: the current version ('$current') is not a clean X.Y.Z." >&2
+            exit 1
+          fi
+
+          IFS='.' read -r major minor patch <<< "${current}"
+          next="${major}.${minor}.$((patch + 1))"
+          echo "Bumping ${current} -> ${next}"
+
+          # Cirurgically replace only the version value in each manifest so the
+          # rest of the formatting stays untouched (keeps prettier happy).
+          sed -i -E "s/(\"version\"[[:space:]]*:[[:space:]]*\")[^\"]+(\")/\1${next}\2/" \
+            package.json \
+            apps/desktop/package.json \
+            apps/desktop/src-tauri/tauri.conf.json
+          sed -i -E "s/^(version[[:space:]]*=[[:space:]]*\")[^\"]+(\")/\1${next}\2/" \
+            apps/desktop/src-tauri/Cargo.toml
+
+          # Cargo.lock records the crate's own version too; keep it in sync so
+          # `cargo test --locked` stays green on the next PR. This targets only
+          # the version line that immediately follows name = "mergescope".
+          sed -i -E "/^name = \"mergescope\"$/{n;s/^version = \"[^\"]+\"/version = \"${next}\"/;}" \
+            apps/desktop/src-tauri/Cargo.lock
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: bump version to ${next} [skip ci]"
+          git push origin HEAD:main

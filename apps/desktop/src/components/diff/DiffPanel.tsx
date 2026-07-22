@@ -79,6 +79,12 @@ export function DiffPanel({
       ignoreTrimWhitespace: ignoreWhitespace,
       hideUnchangedRegions: { enabled: hideUnchanged },
     });
+    // Turn off indentation detection on both inner editors BEFORE attaching the
+    // models: setModel is what triggers the re-guess that would overwrite the
+    // tab width applyTabWidth set (the guess caps at 8 cols, so a .mac override
+    // of 10 was silently lost and diverged panel-to-panel).
+    editor.getOriginalEditor().updateOptions({ detectIndentation: false });
+    editor.getModifiedEditor().updateOptions({ detectIndentation: false });
     editor.setModel({ original, modified });
     editorRef.current = editor;
     editors[side] = editor;

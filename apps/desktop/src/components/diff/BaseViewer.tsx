@@ -28,6 +28,8 @@ export function BaseViewer({ content, fileName, filePath }: BaseViewerProps) {
       model,
       readOnly: true,
       automaticLayout: true,
+      // Tab width is owned by applyTabWidth; keep Monaco from re-guessing it.
+      detectIndentation: false,
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
       renderWhitespace: renderWhitespace ? "all" : "none",

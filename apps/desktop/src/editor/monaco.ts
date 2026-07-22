@@ -203,14 +203,16 @@ export function resolveTabSize(
 /**
  * Applies the effective tab width to a model, setting BOTH `tabSize` (the
  * visual width of a literal tab) and `indentSize` (the column step the
- * indentation guides — the vertical "linha de separação" — follow).
+ * indentation guides — the vertical "linha de separação" — follow). They must
+ * move together, otherwise the guides freeze at a different width than the tab.
  *
- * They must move together: Monaco creates every model with `detectIndentation`
- * on, so each model guesses its own `tabSize`/`indentSize` from its content.
- * Writing only `tabSize` left `indentSize` pinned at the guessed value (usually
- * 4), which both froze the indent guides at 4 columns and made the visible
- * indentation diverge panel-to-panel (BASE/Current/Incoming/Result each guess
- * from different content). Setting both makes every panel deterministic.
+ * This is the single source of truth for tab width — but only because every
+ * editor is created with `detectIndentation: false`. With Monaco's default
+ * (detect on), attaching a model re-guesses its indentation from content and
+ * overwrites whatever we set here; since the guess caps at 8 columns, a `.mac`
+ * override of 10 was silently lost and the visible indentation diverged
+ * panel-to-panel (BASE/Current/Incoming/Result each guess from different
+ * content). Keep `detectIndentation: false` on the editors for this to hold.
  */
 export function applyTabWidth(
   model: monaco.editor.ITextModel,

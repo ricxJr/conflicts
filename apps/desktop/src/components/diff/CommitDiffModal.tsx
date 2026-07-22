@@ -70,6 +70,11 @@ export function CommitDiffModal() {
       ignoreTrimWhitespace: ignoreWhitespace,
       hideUnchangedRegions: { enabled: hideUnchanged },
     });
+    // Tab width is owned by applyTabWidth; keep Monaco from re-guessing it on
+    // attach (setModel). detectIndentation isn't a diff-editor construction
+    // option, so set it on the inner editors before wiring the models.
+    editor.getOriginalEditor().updateOptions({ detectIndentation: false });
+    editor.getModifiedEditor().updateOptions({ detectIndentation: false });
     editor.setModel({ original, modified });
     return () => {
       editor.dispose();
