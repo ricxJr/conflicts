@@ -274,7 +274,9 @@ export function SettingsPanel() {
                   onChange={(value) => setPrefs({ windowStartMode: value as WindowStartMode })}
                 />
               </div>
-              <p className="settings-hint">{t(`settings.windowModeHint.${prefs.windowStartMode}`)}</p>
+              <p className="settings-hint">
+                {t(`settings.windowModeHint.${prefs.windowStartMode}`)}
+              </p>
             </>
           )}
 

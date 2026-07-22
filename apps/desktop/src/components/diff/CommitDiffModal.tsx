@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { monaco, detectLanguage, resolveTabSize } from "../../editor/monaco";
+import { monaco, detectLanguage, applyTabWidth } from "../../editor/monaco";
 import { useSession } from "../../stores/session";
 
 /**
@@ -55,9 +55,8 @@ export function CommitDiffModal() {
     const language = detectLanguage(fileName);
     const original = monaco.editor.createModel(baseContent, language);
     const modified = monaco.editor.createModel(sideContent, language);
-    const resolvedTabSize = resolveTabSize(fileName, { tabSize, tabSizeOverrides });
-    original.updateOptions({ tabSize: resolvedTabSize });
-    modified.updateOptions({ tabSize: resolvedTabSize });
+    applyTabWidth(original, fileName, { tabSize, tabSizeOverrides });
+    applyTabWidth(modified, fileName, { tabSize, tabSizeOverrides });
     const editor = monaco.editor.createDiffEditor(containerRef.current, {
       readOnly: true,
       originalEditable: false,

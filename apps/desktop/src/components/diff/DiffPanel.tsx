@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { monaco, detectLanguage, lineNumberGutterChars, resolveTabSize } from "../../editor/monaco";
+import { monaco, detectLanguage, lineNumberGutterChars, applyTabWidth } from "../../editor/monaco";
 import { editors } from "../../stores/controllers";
 import { useSession } from "../../stores/session";
 import { modifiedLineToBase } from "../../features/diffGeometry";
@@ -57,9 +57,8 @@ export function DiffPanel({
     const language = detectLanguage(fileName);
     const original = monaco.editor.createModel(baseContent, language);
     const modified = monaco.editor.createModel(sideContent, language);
-    const resolvedTabSize = resolveTabSize(fileName, { tabSize, tabSizeOverrides });
-    original.updateOptions({ tabSize: resolvedTabSize });
-    modified.updateOptions({ tabSize: resolvedTabSize });
+    applyTabWidth(original, fileName, { tabSize, tabSizeOverrides });
+    applyTabWidth(modified, fileName, { tabSize, tabSizeOverrides });
 
     const editor = monaco.editor.createDiffEditor(containerRef.current, {
       readOnly: true,
@@ -123,9 +122,8 @@ export function DiffPanel({
     });
     const models = editorRef.current?.getModel();
     if (models) {
-      const resolvedTabSize = resolveTabSize(fileName, { tabSize, tabSizeOverrides });
-      models.original.updateOptions({ tabSize: resolvedTabSize });
-      models.modified.updateOptions({ tabSize: resolvedTabSize });
+      applyTabWidth(models.original, fileName, { tabSize, tabSizeOverrides });
+      applyTabWidth(models.modified, fileName, { tabSize, tabSizeOverrides });
     }
   }, [
     hideUnchanged,

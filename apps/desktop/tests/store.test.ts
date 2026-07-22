@@ -78,9 +78,7 @@ describe("session store", () => {
 
   it("navigation visits only real conflicts and wraps around them", () => {
     const s = useSession.getState();
-    const conflicts = s.groups
-      .map((g, i) => (isConflicting(g) ? i : -1))
-      .filter((i) => i >= 0);
+    const conflicts = s.groups.map((g, i) => (isConflicting(g) ? i : -1)).filter((i) => i >= 0);
     expect(conflicts.length).toBeGreaterThan(0);
 
     // Land on the last conflict, then next wraps to the first conflict.

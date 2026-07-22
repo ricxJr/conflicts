@@ -134,24 +134,47 @@ stage/mark the file as resolved.
 
 ### GitKraken (Windows)
 
-GitKraken does not consistently support arbitrary custom merge-tool
-executables. The reliable setup is to configure MergeScope as Git's global
-merge tool first:
+GitKraken does not let you point at an arbitrary merge-tool executable
+directly, but it can **delegate to Git's configured merge tool**. So the setup
+is two steps: register MergeScope in Git, then tell GitKraken to use Git's
+configuration.
+
+**1. Register MergeScope as Git's global merge tool.** Run the helper script:
 
 ```powershell
 scripts\setup-git-mergetool.ps1 -ExePath "$env:LOCALAPPDATA\MergeScope\mergescope.exe"
 ```
 
-Then, when GitKraken reports a conflict:
+or apply the same three settings by hand (adjust the path to your install):
 
-1. Open GitKraken's built-in terminal for the repository.
-2. Run `git mergetool` (or `git mergetool path/to/file` for one file).
-3. Resolve the conflict in MergeScope and select **Save & Close**.
-4. Return to GitKraken and stage/mark the updated file as resolved.
+```bash
+git config --global merge.tool mergescope
+git config --global mergetool.mergescope.cmd '"C:/Users/<your-user>/AppData/Local/MergeScope/mergescope.exe" --base "$BASE" --current "$LOCAL" --incoming "$REMOTE" --result "$MERGED"'
+git config --global mergetool.mergescope.trustExitCode true
+```
 
-If your GitKraken version has **Preferences → Git → Merge tool** and
-offers **Use Git's configured tool** (or equivalent), select it after applying
-the global Git configuration above.
+Git maps its own variables onto MergeScope's arguments: `$LOCAL` → `--current`
+(ours), `$REMOTE` → `--incoming` (theirs), `$BASE` → `--base` (common
+ancestor), `$MERGED` → `--result` (the working file written back).
+`trustExitCode = true` lets Git trust MergeScope's exit code (`0` resolved,
+`1` canceled) instead of asking in the terminal.
+
+**2. Point GitKraken at that configuration.** Open
+**Preferences → External Tools**, and under **Merge Tool** set
+**External Merge Tool** to **Git Config Default**.
+
+**3. Resolve conflicts.** When GitKraken shows a conflicted file, click
+**Open in external merge tool**. Resolve it in MergeScope, choose
+**Save & Close**, and GitKraken picks up the resolved file automatically.
+
+> **Diff tool:** you can leave **External Diff Tool** on `<Use Merge Tool>`, but
+> MergeScope is a 3-way *merge* tool and is not suited as a plain 2-file diff
+> tool — Git provides no output file for diffs, and MergeScope requires
+> `--result`. Leave GitKraken's built-in diff for regular diffs.
+
+**Fallback** (older GitKraken versions without the **External Tools** screen):
+open GitKraken's built-in terminal and run `git mergetool`
+(or `git mergetool path/to/file` for a single file).
 
 ## Keyboard shortcuts
 

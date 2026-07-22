@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { monaco, detectLanguage, lineNumberGutterChars, resolveTabSize } from "../../editor/monaco";
+import { monaco, detectLanguage, lineNumberGutterChars, applyTabWidth } from "../../editor/monaco";
 import { editors, type ResultController } from "../../stores/controllers";
 import { useSession } from "../../stores/session";
 import { ResolutionToolbar } from "./ResolutionToolbar";
@@ -102,9 +102,8 @@ export function ResultPanel() {
   useEffect(() => {
     const fileName = session?.files.result.fileName;
     if (!fileName) return;
-    editorRef.current
-      ?.getModel()
-      ?.updateOptions({ tabSize: resolveTabSize(fileName, { tabSize, tabSizeOverrides }) });
+    const model = editorRef.current?.getModel();
+    if (model) applyTabWidth(model, fileName, { tabSize, tabSizeOverrides });
   }, [tabSize, tabSizeOverrides, session]);
 
   // (Re)initialize content and regions whenever the generated result changes.
@@ -117,7 +116,7 @@ export function ResultPanel() {
       initialResult.lines.join("\n"),
       detectLanguage(fileName),
     );
-    model.updateOptions({ tabSize: resolveTabSize(fileName, { tabSize, tabSizeOverrides }) });
+    applyTabWidth(model, fileName, { tabSize, tabSizeOverrides });
     const previous = editor.getModel();
     suppressRef.current++;
     editor.setModel(model);

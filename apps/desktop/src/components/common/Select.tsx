@@ -32,7 +32,12 @@ export function Select({ id, value, options, onChange, ariaLabel, className }: S
 
   useEffect(() => {
     if (!open) return;
-    setHighlight(Math.max(0, options.findIndex((o) => o.value === value)));
+    setHighlight(
+      Math.max(
+        0,
+        options.findIndex((o) => o.value === value),
+      ),
+    );
     const onPointerDown = (e: MouseEvent) => {
       const target = e.target as Node;
       if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) return;

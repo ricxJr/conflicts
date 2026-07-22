@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { monaco, detectLanguage, lineNumberGutterChars, resolveTabSize } from "../../editor/monaco";
+import { monaco, detectLanguage, lineNumberGutterChars, applyTabWidth } from "../../editor/monaco";
 import { useSession } from "../../stores/session";
 
 interface BaseViewerProps {
@@ -23,7 +23,7 @@ export function BaseViewer({ content, fileName, filePath }: BaseViewerProps) {
   useEffect(() => {
     if (!containerRef.current) return;
     const model = monaco.editor.createModel(content, detectLanguage(fileName));
-    model.updateOptions({ tabSize: resolveTabSize(fileName, { tabSize, tabSizeOverrides }) });
+    applyTabWidth(model, fileName, { tabSize, tabSizeOverrides });
     const editor = monaco.editor.create(containerRef.current, {
       model,
       readOnly: true,
@@ -48,9 +48,8 @@ export function BaseViewer({ content, fileName, filePath }: BaseViewerProps) {
       fontSize: editorFontSize,
       fontFamily: editorFontFamily || undefined,
     });
-    editorRef.current
-      ?.getModel()
-      ?.updateOptions({ tabSize: resolveTabSize(fileName, { tabSize, tabSizeOverrides }) });
+    const model = editorRef.current?.getModel();
+    if (model) applyTabWidth(model, fileName, { tabSize, tabSizeOverrides });
   }, [editorFontSize, editorFontFamily, renderWhitespace, tabSize, tabSizeOverrides, fileName]);
 
   return (
