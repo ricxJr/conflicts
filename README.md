@@ -168,7 +168,7 @@ ancestor), `$MERGED` → `--result` (the working file written back).
 **Save & Close**, and GitKraken picks up the resolved file automatically.
 
 > **Diff tool:** you can leave **External Diff Tool** on `<Use Merge Tool>`, but
-> MergeScope is a 3-way *merge* tool and is not suited as a plain 2-file diff
+> MergeScope is a 3-way _merge_ tool and is not suited as a plain 2-file diff
 > tool — Git provides no output file for diffs, and MergeScope requires
 > `--result`. Leave GitKraken's built-in diff for regular diffs.
 
