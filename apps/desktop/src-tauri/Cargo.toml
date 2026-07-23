@@ -1,6 +1,6 @@
 [package]
 name = "mergescope"
-version = "1.1.1"
+version = "1.2.0"
 description = "MergeScope — visual Git merge conflict resolution against the common ancestor"
 authors = ["MergeScope"]
 edition = "2021"
