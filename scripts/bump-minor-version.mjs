@@ -93,10 +93,7 @@ editFile("apps/desktop/src-tauri/Cargo.toml", (content) =>
 
 // Cargo.lock: the version line right after the mergescope package entry.
 editFile("apps/desktop/src-tauri/Cargo.lock", (content) =>
-  content.replace(
-    /(name\s*=\s*"mergescope"\s*\r?\nversion\s*=\s*")[^"]*(")/,
-    `$1${newVersion}$2`,
-  ),
+  content.replace(/(name\s*=\s*"mergescope"\s*\r?\nversion\s*=\s*")[^"]*(")/, `$1${newVersion}$2`),
 );
 
 const branch = `chore/bump-v${newVersion}`;
