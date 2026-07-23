@@ -1,13 +1,14 @@
 name: Beta Release
 
 # Runs on every push to main (i.e. whenever a PR is merged). It:
-#   1. publishes a beta pre-release for the current version (e.g. v1.1.1-beta.1);
-#   2. builds and attaches the Windows binaries to that pre-release;
-#   3. bumps main to the next patch version so the next contributor already
-#      starts from the correct upcoming release.
+#   1. publishes a beta pre-release for the current version (e.g. v1.1.1-beta.1),
+#      incrementing the beta counter on every merge (beta.1, beta.2, ...);
+#   2. builds and attaches the Windows binaries to that pre-release.
 #
-# The bump commit carries "[skip ci]" so it does NOT re-trigger this workflow
-# (or CI), avoiding an infinite loop.
+# The version in package.json is NOT bumped automatically: every merge keeps
+# producing betas of the SAME version. The version is bumped only when you cut
+# an official release -- do it through a normal PR before publishing the
+# stable GitHub Release handled by release.yml.
 on:
   push:
     branches: [main]
@@ -74,49 +75,3 @@ jobs:
     with:
       ref: ${{ needs.publish-beta.outputs.tag }}
       tag: ${{ needs.publish-beta.outputs.tag }}
-
-  bump-next:
-    name: Bump main to the next patch version
-    needs: publish-beta
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out main
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-
-      - name: Bump the version in every manifest and push
-        run: |
-          set -euo pipefail
-
-          current="$(node -p "require('./package.json').version")"
-          if [[ ! "$current" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Cannot bump: the current version ('$current') is not a clean X.Y.Z." >&2
-            exit 1
-          fi
-
-          IFS='.' read -r major minor patch <<< "${current}"
-          next="${major}.${minor}.$((patch + 1))"
-          echo "Bumping ${current} -> ${next}"
-
-          # Cirurgically replace only the version value in each manifest so the
-          # rest of the formatting stays untouched (keeps prettier happy).
-          sed -i -E "s/(\"version\"[[:space:]]*:[[:space:]]*\")[^\"]+(\")/\1${next}\2/" \
-            package.json \
-            apps/desktop/package.json \
-            apps/desktop/src-tauri/tauri.conf.json
-          sed -i -E "s/^(version[[:space:]]*=[[:space:]]*\")[^\"]+(\")/\1${next}\2/" \
-            apps/desktop/src-tauri/Cargo.toml
-
-          # Cargo.lock records the crate's own version too; keep it in sync so
-          # `cargo test --locked` stays green on the next PR. This targets only
-          # the version line that immediately follows name = "mergescope".
-          sed -i -E "/^name = \"mergescope\"$/{n;s/^version = \"[^\"]+\"/version = \"${next}\"/;}" \
-            apps/desktop/src-tauri/Cargo.lock
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "chore: bump version to ${next} [skip ci]"
-          git push origin HEAD:main
