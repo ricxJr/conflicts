@@ -1,25 +1,21 @@
 name: Prepare Next Version
 
 # Runs when a human publishes an official (stable) GitHub Release, alongside the
-# stable build in release.yml. It does NOT build anything: it prepares the next
-# development cycle by bumping the product version one MINOR step (e.g. after
-# releasing v1.1.1 the next version becomes v1.2.0, then v1.3.0, ...), pushing a
-# branch and opening a pull request against main for you to review and merge.
+# stable build in release.yml. It does NOT build anything and it does NOT open a
+# pull request: it prepares the next development cycle by bumping the product
+# version one MINOR step (e.g. after releasing v1.1.1 the next version becomes
+# v1.2.0, then v1.3.0, ...), then pushes a branch with that single commit.
 #
-# Once that PR is merged, beta-release.yml starts producing betas of the new
-# version (v1.2.0-beta.1, ...).
-#
-# NOTE: pull requests opened with the default GITHUB_TOKEN do not trigger other
-# workflows, so CI will not run automatically on the bump PR. If you want CI to
-# run on it, create a repository secret named RELEASE_PAT holding a Personal
-# Access Token with "repo" scope; the workflow uses it automatically when present.
+# Opening the PR is left to you (GitHub Actions is not allowed to create PRs in
+# this repo anyway): the run summary prints a ready-to-use "compare" link. Once
+# you merge that PR, beta-release.yml starts producing betas of the new version
+# (v1.2.0-beta.1, ...).
 on:
   release:
     types: [published]
 
 permissions:
   contents: write
-  pull-requests: write
 
 concurrency:
   group: prepare-next-version
@@ -27,7 +23,7 @@ concurrency:
 
 jobs:
   prepare:
-    name: Bump the minor version and open the PR
+    name: Bump the minor version and push the branch
     runs-on: ubuntu-latest
     # Only for real, stable releases -- skip drafts and pre-releases (betas).
     if: ${{ !github.event.release.prerelease && !github.event.release.draft }}
@@ -37,7 +33,6 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_PAT || github.token }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -62,42 +57,22 @@ jobs:
           git commit -am "chore(release): preparar próxima versão v${NEW_VERSION}"
           git push --force origin "HEAD:refs/heads/${BRANCH}"
 
-      - name: Open the pull request
+      - name: Print the compare link to open the PR
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_PAT || github.token }}
           BRANCH: ${{ steps.bump.outputs.branch }}
           NEW_VERSION: ${{ steps.bump.outputs.new_version }}
           BASE_VERSION: ${{ steps.bump.outputs.base_version }}
         run: |
           set -euo pipefail
-
-          existing="$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number' || true)"
-          if [[ -n "$existing" ]]; then
-            echo "A pull request for ${BRANCH} is already open (#${existing}); nothing to do."
-            exit 0
-          fi
-
-          gh pr create \
-            --base main \
-            --head "$BRANCH" \
-            --title "chore(release): preparar próxima versão v${NEW_VERSION}" \
-            --body "$(cat <<EOF
-          Bump automático de versão após a publicação da release **v${BASE_VERSION}**.
-
-          A versão do produto sobe um dígito no **meio** (minor), zerando o patch:
-
-          - \`v${BASE_VERSION}\` → \`v${NEW_VERSION}\`
-
-          Arquivos atualizados:
-
-          - \`package.json\` (raiz)
-          - \`apps/desktop/package.json\`
-          - \`apps/desktop/src-tauri/tauri.conf.json\`
-          - \`apps/desktop/src-tauri/Cargo.toml\`
-          - \`apps/desktop/src-tauri/Cargo.lock\` (pacote \`mergescope\`)
-
-          Depois que este PR for aprovado e reintegrado, os betas passam a ser gerados como \`v${NEW_VERSION}-beta.N\`.
-
-          _PR aberto automaticamente pelo workflow **Prepare Next Version**._
-          EOF
-          )"
+          compare_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/main...${BRANCH}?expand=1"
+          {
+            echo "## Próxima versão preparada"
+            echo ""
+            echo "Bump automático após a release **v${BASE_VERSION}**: \`v${BASE_VERSION}\` → \`v${NEW_VERSION}\` (minor)."
+            echo ""
+            echo "Branch \`${BRANCH}\` publicada. Abra o PR contra \`main\` por aqui:"
+            echo ""
+            echo "➡️ [Abrir pull request](${compare_url})"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Branch publicada: ${BRANCH}"
+          echo "Abra o PR em: ${compare_url}"
